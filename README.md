@@ -68,7 +68,7 @@ to the web link above instead; it's fully capable, this is just an
 alternative for Android).
 
 1. Grab the latest build from this repo's
-   [Releases page](https://github.com/gazerus/family-games/releases/tag/android-latest)
+   [Releases page](https://github.com/gazerus/Family-games/releases/tag/android-latest)
    — always the file named `family-games.apk`. It rebuilds automatically
    from `main` (see `.github/workflows/build-apk.yml`), so that one link is
    always the newest version.
