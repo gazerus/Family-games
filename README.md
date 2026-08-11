@@ -117,10 +117,14 @@ or run two browser tabs locally, to test multiplayer bits.
 `.github/workflows/deploy.yml` builds and deploys automatically on every push
 to `main`. One-time repo setup: **Settings → Pages → Source → GitHub
 Actions**. After that, the app is live at
-`https://<your-github-username>.github.io/family-games/`.
+`https://<your-github-username>.github.io/<exact-repo-name>/`.
 
-The Vite `base` path in `vite.config.ts` is set to `/family-games/` to match
-that URL — update it if you rename the repo.
+The Vite `base` path in `vite.config.ts` (and `start_url`/`scope` in the PWA
+manifest just above it) must exactly match your repo's name, **including
+case** — GitHub Pages URLs are case-sensitive. This repo is
+`gazerus/Family-games` (capital F), so `base` is `/Family-games/`; if you
+rename the repo, update all three to match exactly or the deployed app will
+load a blank page (index.html loads, but its JS/CSS asset paths 404).
 
 ## What this doesn't do (yet)
 
