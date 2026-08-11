@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { useGameChannel } from "../useGameChannel";
+import { useHostGameState } from "../useHostGameState";
 import type { GameProps } from "../types";
 import { pickRandomWord } from "./words";
 import { DrawCanvas } from "./DrawCanvas";
@@ -54,11 +54,18 @@ interface FeedEntry {
 }
 
 export function DrawGuessGame({ onExit }: GameProps) {
-  const { send, onMessage, localName, localSessionId, participants } =
-    useGameChannel<DrawGuessPayload>(GAME_ID);
+  const {
+    state: publicState,
+    isHost,
+    startAsHost,
+    updateState,
+    send,
+    onMessage,
+    localName,
+    localSessionId,
+    participants,
+  } = useHostGameState<PublicState, DrawGuessPayload>(GAME_ID, "game-over");
 
-  const [recognizedHostId, setRecognizedHostId] = useState<string | null>(null);
-  const [publicState, setPublicState] = useState<PublicState | null>(null);
   const [localWord, setLocalWord] = useState<string | null>(null);
   const [feed, setFeed] = useState<FeedEntry[]>([]);
   const [guessDraft, setGuessDraft] = useState("");
@@ -70,8 +77,6 @@ export function DrawGuessGame({ onExit }: GameProps) {
   const roundTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
 
-  const isHost = recognizedHostId === localSessionId && recognizedHostId !== null;
-
   function pushFeed(entry: Omit<FeedEntry, "id">) {
     setFeed((prev) => [...prev, { ...entry, id: `${Date.now()}-${Math.random()}` }]);
   }
@@ -81,11 +86,6 @@ export function DrawGuessGame({ onExit }: GameProps) {
       clearTimeout(roundTimeoutRef.current);
       roundTimeoutRef.current = null;
     }
-  }
-
-  function broadcastState(state: PublicState) {
-    setPublicState(state);
-    send("state", state as unknown as DrawGuessPayload);
   }
 
   function assignWord(drawerId: string, state: PublicState) {
@@ -108,7 +108,6 @@ export function DrawGuessGame({ onExit }: GameProps) {
     if (order.length < 2) return;
 
     usedWordsRef.current = new Set();
-    setRecognizedHostId(localSessionId);
     setFeed([]);
     setLocalWord(null);
 
@@ -126,7 +125,7 @@ export function DrawGuessGame({ onExit }: GameProps) {
       round: 1,
     };
     assignWord(order[0].sessionId, state);
-    broadcastState(state);
+    startAsHost(state);
     clearRoundTimeout();
     roundTimeoutRef.current = setTimeout(() => endRound(state, "timeout"), ROUND_MS);
   }
@@ -140,14 +139,14 @@ export function DrawGuessGame({ onExit }: GameProps) {
       roundEndsAt: null,
       lastCorrectGuesserId: reason === "correct" ? guesserId ?? null : null,
     };
-    broadcastState(next);
+    updateState(next);
     setTimeout(() => advanceRound(next), REVEAL_PAUSE_MS);
   }
 
   function advanceRound(prev: PublicState) {
     const nextRoundIndex = prev.round; // players are 0-indexed, round is 1-indexed
     if (nextRoundIndex >= prev.players.length) {
-      broadcastState({ ...prev, phase: "game-over", currentDrawerId: null, revealedWord: null });
+      updateState({ ...prev, phase: "game-over", currentDrawerId: null, revealedWord: null });
       return;
     }
     const drawer = prev.players[nextRoundIndex];
@@ -163,7 +162,7 @@ export function DrawGuessGame({ onExit }: GameProps) {
     };
     setLocalWord(null);
     assignWord(drawer.sessionId, state);
-    broadcastState(state);
+    updateState(state);
     clearRoundTimeout();
     roundTimeoutRef.current = setTimeout(() => endRound(state, "timeout"), ROUND_MS);
   }
@@ -172,21 +171,9 @@ export function DrawGuessGame({ onExit }: GameProps) {
     startGame();
   }
 
-  // Wire up incoming messages.
+  // Wire up incoming messages the shared host-state hook doesn't already handle.
   useEffect(() => {
     return onMessage((type, payload, senderId, sender) => {
-      if (type === "state") {
-        const state = payload as PublicState;
-        const canAdopt =
-          recognizedHostId === null ||
-          senderId === recognizedHostId ||
-          publicState === null ||
-          publicState.phase === "game-over";
-        if (!canAdopt) return;
-        setRecognizedHostId(senderId);
-        setPublicState(state);
-        return;
-      }
       if (type === "word") {
         setLocalWord((payload as WordPayload).word);
         return;
@@ -214,7 +201,7 @@ export function DrawGuessGame({ onExit }: GameProps) {
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onMessage, recognizedHostId, publicState, isHost]);
+  }, [onMessage, publicState, isHost]);
 
   // Reset the canvas whenever a new round starts (fresh drawer, fresh word).
   useEffect(() => {
@@ -245,15 +232,6 @@ export function DrawGuessGame({ onExit }: GameProps) {
       pushFeed({ kind: "system", text: "Game over! Final scores below." });
     }
   }, [publicState]);
-
-  // Host: keep new joiners in sync by re-broadcasting current state.
-  const participantCount = participants.length;
-  useEffect(() => {
-    if (isHost && publicState && publicState.phase !== "game-over") {
-      send("state", publicState as unknown as DrawGuessPayload);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [participantCount]);
 
   // Countdown display, ticks locally for everyone.
   useEffect(() => {

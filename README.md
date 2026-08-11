@@ -5,8 +5,12 @@ video calls, but the games are ours.
 
 Everyone opens the same link on their phone, picks a name, and lands in one
 shared family room with three tabs: **Video**, **Chat**, and **Games**. No
-accounts, no sign-up. First game: **Draw & Guess**, a Pictionary-style game
-where you take turns drawing a secret word while everyone else guesses.
+accounts, no sign-up. Games so far:
+
+- **Draw & Guess** — Pictionary-style: take turns drawing a secret word while
+  everyone else guesses.
+- **Memory Match** — flip cards to find matching pairs, most pairs wins.
+- **Connect Four** — the classic, drop discs to line up four in a row.
 
 ## How it works, in short
 
@@ -51,18 +55,28 @@ It then opens full-screen like a normal app.
 Games are self-contained and register themselves in one place. To add one:
 
 1. Create a folder under `src/games/<your-game>/` for its component(s).
-2. Use `useGameChannel<YourPayloadType>("your-game-id")` (see
-   `src/games/useGameChannel.ts`) to get `send`, `onMessage`, `participants`,
-   `localName`, `localSessionId` — this scopes Daily's data channel to just
-   your game's messages, so you don't need to filter anyone else's.
+2. For a turn-based game, build on `useHostGameState<YourStateType>("your-game-id",
+   "game-over-phase-name")` (see `src/games/useHostGameState.ts`). Whoever
+   taps "Start" becomes that session's authority: they compute the single
+   source-of-truth state and broadcast it; everyone else just reflects it,
+   and sends their moves back for the host to validate and apply. It also
+   handles late joiners and lets a new host take over once a game ends. This
+   is the same pattern all three current games use — see
+   `src/games/memory/MemoryMatchGame.tsx` for the simplest example of it, or
+   `src/games/connectfour/ConnectFourGame.tsx` for one with win detection.
+   For anything that doesn't fit that shape, drop to the lower-level
+   `useGameChannel<YourPayloadType>("your-game-id")` (see
+   `src/games/useGameChannel.ts`) directly — `send`/`onMessage` scoped to
+   your game's own messages, no host protocol assumed.
 3. Export a component with the shape `({ onExit }: GameProps) => ...` (see
    `src/games/types.ts`) — call `onExit()` to return to the games hub.
 4. Add it to the list in `src/games/registry.ts`. That's the only wiring
    needed; it shows up in the Games tab automatically.
 
-`src/games/drawguess/` is a full worked example, including turn-taking, a
-synced canvas, scoring, and round timers, all built on `useGameChannel`
-without any backend.
+`src/games/drawguess/` is the most involved worked example — turn-taking,
+a synced canvas, scoring, and round timers, all layered on top of
+`useHostGameState` with a couple of extra message types (the secret word,
+sent privately to just the drawer; drawing strokes, sent to everyone).
 
 ## Local development
 
@@ -99,10 +113,13 @@ that URL — update it if you rename the repo.
 - **No chat/game history.** Nothing is stored anywhere — close the app and
   it's gone. Fine for a casual family room; would need a real backend (or
   something like Firebase) to change.
-- **No automatic host handover.** In Draw & Guess, whoever taps "Start game"
+- **No automatic host handover.** In every game, whoever taps "Start game"
   runs that game's turn order and scoring for everyone else. If they drop
-  out mid-game, the round can stall — anyone can tap "Start game" again to
-  begin a fresh one.
+  out mid-game, it can stall — anyone can tap "Start game" again to begin a
+  fresh one.
+- **Connect Four is strictly 2-player** (it's just how the game works) and
+  uses whichever two people happen to be in the room when it starts; anyone
+  else currently in the call is a spectator for that game.
 - **One shared room only.** There's no concept of multiple separate rooms or
   contacts list — it's built for one family, one room. Multiple rooms would
   mean adding a picker before the setup screen.
