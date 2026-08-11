@@ -428,6 +428,27 @@
   margin-top: 2px;
 }
 
+/* Shared dot-pip renderer (dice, dominoes) */
+
+.pips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  padding: 12%;
+  box-sizing: border-box;
+}
+
+.pips__dot {
+  align-self: center;
+  justify-self: center;
+  width: 68%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--pip-color, #1a1720);
+}
+
 /* Draw & Guess */
 
 .dg-lobby {
@@ -809,4 +830,393 @@
       inset 0 3px 4px rgba(255, 255, 255, 0.4),
       0 0 0 6px #fde047;
   }
+}
+
+/* Snakes & Ladders */
+
+.snakes-ladders-game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sl-turn-banner {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.sl-board-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.sl-board {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  grid-template-rows: repeat(10, 1fr);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.sl-square {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 2px 4px;
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.35);
+  background: #fdfcff;
+}
+
+.sl-square--b {
+  background: #efeaff;
+}
+
+.sl-square--ladder {
+  background: #fef3c7;
+}
+
+.sl-square--snake {
+  background: #fee2e2;
+}
+
+.sl-connectors {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.sl-ladder-rail {
+  stroke: #b45309;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+.sl-ladder-rung {
+  stroke: #f59e0b;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.sl-snake-path {
+  stroke: #16a34a;
+  stroke-width: 8;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+.sl-token {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  margin-top: -10px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  border: 2px solid white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  transition: left 0.15s ease, top 0.15s ease;
+  z-index: 2;
+}
+
+.sl-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px max(10px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+}
+
+.sl-die {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  --pip-color: var(--text-h);
+}
+
+.sl-die:disabled {
+  opacity: 0.5;
+}
+
+.sl-die--rolling {
+  animation: sl-shake 0.3s ease-in-out infinite;
+}
+
+@keyframes sl-shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-8deg);
+  }
+  75% {
+    transform: rotate(8deg);
+  }
+}
+
+.sl-controls .dg-mini-scoreboard {
+  padding: 0;
+}
+
+/* Dominoes */
+
+.dominoes-game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dom-turn-banner {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.dom-opponents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.dom-opponent-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.dom-chain-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  padding: 10px;
+  min-height: 90px;
+}
+
+.dom-chain {
+  display: flex;
+  gap: 4px;
+  margin: 0 auto;
+}
+
+.domino {
+  flex-shrink: 0;
+  width: 74px;
+  height: 37px;
+  display: flex;
+  align-items: stretch;
+  background: linear-gradient(160deg, #fffdf7, #f3efe3);
+  border: 1px solid #d8d0b8;
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  padding: 0;
+}
+
+.domino--double {
+  border-color: #c4a94f;
+  box-shadow:
+    0 0 0 2px rgba(196, 169, 79, 0.35),
+    var(--shadow);
+}
+
+.domino--dimmed {
+  opacity: 0.4;
+}
+
+.domino:disabled {
+  cursor: default;
+}
+
+.domino__half {
+  flex: 1;
+  --pip-color: #2b2620;
+}
+
+.domino__divider {
+  width: 1px;
+  background: #d8d0b8;
+  margin: 4px 0;
+}
+
+.dom-hand {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 10px;
+}
+
+.dom-end-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  padding: 8px;
+  font-size: 13px;
+  background: var(--accent-bg);
+  flex-wrap: wrap;
+}
+
+.dom-end-choice button:not(.link-button) {
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 5px 10px;
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.dom-actions {
+  display: flex;
+  justify-content: center;
+  padding: 6px 10px max(10px, env(safe-area-inset-bottom));
+}
+
+.dom-actions .primary-button {
+  max-width: 220px;
+}
+
+/* Critter Cards */
+
+.critter-cards-game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.cc-turn-banner {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.cc-opponents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.cc-table {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 110px;
+}
+
+.critter-card {
+  flex-shrink: 0;
+  width: 68px;
+  height: 96px;
+  border-radius: 10px;
+  border: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  color: white;
+}
+
+.critter-card--dimmed {
+  opacity: 0.35;
+}
+
+.critter-card:disabled {
+  cursor: default;
+}
+
+.critter-card__symbol {
+  font-size: 30px;
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.critter-card__animal {
+  position: absolute;
+  bottom: 4px;
+  right: 5px;
+  font-size: 13px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
+}
+
+.cc-hand {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 10px;
+}
+
+.cc-color-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  padding: 8px;
+  font-size: 13px;
+  background: var(--accent-bg);
+  flex-wrap: wrap;
+}
+
+.cc-color-swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: var(--shadow);
+}
+
+.cc-color-swatch--red {
+  background: #ef4444;
+}
+
+.cc-color-swatch--blue {
+  background: #3b82f6;
+}
+
+.cc-color-swatch--yellow {
+  background: #eab308;
+}
+
+.cc-color-swatch--green {
+  background: #22c55e;
 }

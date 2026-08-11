@@ -11,6 +11,15 @@ accounts, no sign-up. Games so far:
   everyone else guesses.
 - **Memory Match** — flip cards to find matching pairs, most pairs wins.
 - **Connect Four** — the classic, drop discs to line up four in a row.
+- **Snakes & Ladders** — roll an animated dice, race to square 100, 10
+  ladders and 10 snakes to keep it swingy. Supports 2-4 players.
+- **Dominoes** — double-six set, real hidden hands (nobody but you can see
+  your tiles), draw from the boneyard when you're stuck. Supports 2-4
+  players.
+- **Critter Cards** — a simple animal-themed color/number matching card
+  game in the same spirit as UNO Junior: Skip, Reverse, Draw 2, and Wild
+  cards, first to empty their hand wins, no cross-game scoring. Supports
+  2-4 players.
 
 ## How it works, in short
 
@@ -77,6 +86,18 @@ Games are self-contained and register themselves in one place. To add one:
 a synced canvas, scoring, and round timers, all layered on top of
 `useHostGameState` with a couple of extra message types (the secret word,
 sent privately to just the drawer; drawing strokes, sent to everyone).
+
+**Hidden information** (a hand of cards/tiles nobody else should see): the
+public `state` from `useHostGameState` should only ever hold what everyone
+is allowed to know (e.g. hand *sizes*, not contents). The host keeps the
+real data in a plain ref (not React state, so it never gets broadcast) and
+pushes each player's own slice of it to them with a targeted
+`send("hand", { hand }, theirSessionId)` — same idea as Draw & Guess's
+secret word, just per-player instead of per-drawer. `src/games/dominoes/`
+and `src/games/crittercards/` are the fullest worked examples of this: both
+also show the "declare your move, host validates and applies it" pattern
+for actions the acting player can't safely resolve themselves (they don't
+know what's in the deck/boneyard either).
 
 ## Local development
 
