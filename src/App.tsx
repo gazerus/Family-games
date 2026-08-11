@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CallProvider } from "./call/CallContext";
 import { SetupScreen } from "./setup/SetupScreen";
-import { clearProfile, loadProfile, saveProfile } from "./setup/storage";
+import { loadProfile, saveProfile } from "./setup/storage";
 import { TabBar } from "./components/TabBar";
 import type { TabId } from "./components/TabBar";
 import { VideoTab } from "./tabs/VideoTab";
@@ -33,14 +33,17 @@ function roomFromLink(): string | null {
 
 function App() {
   const [profile, setProfile] = useState<FamilyProfile | null>(() => loadProfile());
+  const [editing, setEditing] = useState(false);
 
-  if (!profile) {
+  if (!profile || editing) {
     return (
       <SetupScreen
-        initial={{ roomUrl: roomFromLink() ?? undefined }}
+        initial={profile ?? { roomUrl: roomFromLink() ?? undefined }}
+        onCancel={profile ? () => setEditing(false) : undefined}
         onComplete={(p) => {
           saveProfile(p);
           setProfile(p);
+          setEditing(false);
           // Drop ?room=... from the address bar now that it's saved on this device.
           window.history.replaceState({}, "", window.location.pathname);
         }}
@@ -53,10 +56,7 @@ function App() {
       <AppShell key={`${profile.roomUrl}:${profile.name}`} profile={profile} />
       <button
         className="settings-corner-button"
-        onClick={() => {
-          clearProfile();
-          setProfile(null);
-        }}
+        onClick={() => setEditing(true)}
         aria-label="Change name or room"
         title="Change name or room"
       >

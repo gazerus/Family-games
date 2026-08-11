@@ -63,7 +63,7 @@ export function DrawGuessGame({ onExit }: GameProps) {
     onMessage,
     localName,
     localSessionId,
-    participants,
+    presentPlayers,
   } = useHostGameState<PublicState, DrawGuessPayload>(GAME_ID, "game-over");
 
   const [localWord, setLocalWord] = useState<string | null>(null);
@@ -101,7 +101,7 @@ export function DrawGuessGame({ onExit }: GameProps) {
   }
 
   function startGame() {
-    const order = participants.map((p) => ({
+    const order = presentPlayers.map((p) => ({
       sessionId: p.sessionId,
       name: p.userName,
     }));
@@ -300,17 +300,17 @@ export function DrawGuessGame({ onExit }: GameProps) {
       <div className="dg-lobby">
         <h2>🎨 Draw &amp; Guess</h2>
         <p>Take turns drawing a secret word while everyone else guesses.</p>
-        {participants.length < 2 ? (
-          <p className="dg-hint">Need at least 2 people in the room to play.</p>
+        {presentPlayers.length < 2 ? (
+          <p className="dg-hint">Need at least 2 people to have this game open.</p>
         ) : (
           <p className="dg-hint">
-            {participants.length} people ready. Whoever starts runs the first game.
+            {presentPlayers.length} people ready. Whoever starts runs the first game.
           </p>
         )}
         <button
           className="primary-button"
           onClick={startGame}
-          disabled={participants.length < 2}
+          disabled={presentPlayers.length < 2}
         >
           Start game
         </button>
@@ -333,7 +333,7 @@ export function DrawGuessGame({ onExit }: GameProps) {
             </li>
           ))}
         </ol>
-        <button className="primary-button" onClick={playAgain} disabled={participants.length < 2}>
+        <button className="primary-button" onClick={playAgain} disabled={presentPlayers.length < 2}>
           Play again
         </button>
         <button className="link-button" onClick={onExit}>

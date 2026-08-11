@@ -969,13 +969,14 @@
   font-weight: 800;
   border: 2px solid white;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
-  transition: left 0.15s ease, top 0.15s ease;
+  transition: left 0.3s ease, top 0.3s ease;
   z-index: 2;
 }
 
 .sl-controls {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 14px;
   padding: 10px 14px max(10px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
@@ -983,9 +984,9 @@
 
 .sl-die {
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 112px;
+  height: 112px;
+  border-radius: 28px;
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow);

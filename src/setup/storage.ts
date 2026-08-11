@@ -17,7 +17,3 @@ export function loadProfile(): FamilyProfile | null {
 export function saveProfile(profile: FamilyProfile): void {
   localStorage.setItem(KEY, JSON.stringify(profile));
 }
-
-export function clearProfile(): void {
-  localStorage.removeItem(KEY);
-}

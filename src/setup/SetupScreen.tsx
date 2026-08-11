@@ -22,9 +22,11 @@ function roomNickname(url: string): string {
 export function SetupScreen({
   initial,
   onComplete,
+  onCancel,
 }: {
   initial: Partial<FamilyProfile> | null;
   onComplete: (profile: FamilyProfile) => void;
+  onCancel?: () => void;
 }) {
   const linkedRoomUrl = initial?.roomUrl && isLikelyDailyUrl(initial.roomUrl) ? initial.roomUrl : null;
 
@@ -96,8 +98,13 @@ export function SetupScreen({
           {error && <p className="setup-error">{error}</p>}
 
           <button type="submit" className="primary-button">
-            Join the family room
+            {onCancel ? "Save" : "Join the family room"}
           </button>
+          {onCancel && (
+            <button type="button" className="link-button" onClick={onCancel}>
+              Cancel
+            </button>
+          )}
         </form>
 
         <button

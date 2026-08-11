@@ -68,7 +68,7 @@ export function ConnectFourGame({ onExit }: GameProps) {
     send,
     onMessage,
     localSessionId,
-    participants,
+    presentPlayers,
   } = useHostGameState<PublicState, ConnectFourPayload>(GAME_ID, "game-over");
 
   function applyDrop(current: PublicState, col: number) {
@@ -99,7 +99,7 @@ export function ConnectFourGame({ onExit }: GameProps) {
   }
 
   function startGame() {
-    const order = participants.slice(0, 2).map((p) => ({ sessionId: p.sessionId, name: p.userName }));
+    const order = presentPlayers.slice(0, 2).map((p) => ({ sessionId: p.sessionId, name: p.userName }));
     if (order.length < 2) return;
     startAsHost({
       phase: "playing",
@@ -142,14 +142,14 @@ export function ConnectFourGame({ onExit }: GameProps) {
       <div className="dg-lobby">
         <h2>🔴 Connect Four</h2>
         <p>Drop discs to line up four in a row before they do.</p>
-        {participants.length < 2 ? (
-          <p className="dg-hint">Need at least 2 people in the room to play.</p>
+        {presentPlayers.length < 2 ? (
+          <p className="dg-hint">Need at least 2 people to have this game open.</p>
         ) : (
           <p className="dg-hint">
-            {participants.length} people ready. Whoever starts runs the first game.
+            {presentPlayers.length} people ready. Whoever starts runs the first game.
           </p>
         )}
-        <button className="primary-button" onClick={startGame} disabled={participants.length < 2}>
+        <button className="primary-button" onClick={startGame} disabled={presentPlayers.length < 2}>
           Start game
         </button>
         <button className="link-button" onClick={onExit}>
@@ -167,7 +167,7 @@ export function ConnectFourGame({ onExit }: GameProps) {
         <h2>
           {winner ? `${DISC_EMOJI[winnerIdx]} ${winner.name} wins!` : "🤝 It's a draw!"}
         </h2>
-        <button className="primary-button" onClick={startGame} disabled={participants.length < 2}>
+        <button className="primary-button" onClick={startGame} disabled={presentPlayers.length < 2}>
           Play again
         </button>
         <button className="link-button" onClick={onExit}>
