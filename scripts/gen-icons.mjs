@@ -5,7 +5,9 @@ import path from "node:path";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.join(scriptDir, "../public/icons");
+const resourcesDir = path.join(scriptDir, "../resources");
 mkdirSync(outDir, { recursive: true });
+mkdirSync(resourcesDir, { recursive: true });
 
 function svg(size, padding) {
   const inner = size - padding * 2;
@@ -29,17 +31,35 @@ function svg(size, padding) {
 </svg>`;
 }
 
+function splashSvg(size) {
+  const logoSize = size * 0.42;
+  const offset = (size - logoSize) / 2;
+  return `
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <rect width="${size}" height="${size}" fill="#17151c"/>
+  <g transform="translate(${offset} ${offset})">
+    ${svg(logoSize, 0)
+      .replace(/<\?xml[^>]*>/, "")
+      .replace(/<svg[^>]*>/, "")
+      .replace("</svg>", "")}
+  </g>
+</svg>`;
+}
+
 const jobs = [
-  { file: "icon-192.png", size: 192, padding: 0 },
-  { file: "icon-512.png", size: 512, padding: 0 },
-  { file: "maskable-192.png", size: 192, padding: 192 * 0.14 },
-  { file: "maskable-512.png", size: 512, padding: 512 * 0.14 },
-  { file: "apple-touch-icon.png", size: 180, padding: 0 },
+  { file: `${outDir}/icon-192.png`, size: 192, render: svg, padding: 0 },
+  { file: `${outDir}/icon-512.png`, size: 512, render: svg, padding: 0 },
+  { file: `${outDir}/maskable-192.png`, size: 192, render: svg, padding: 192 * 0.14 },
+  { file: `${outDir}/maskable-512.png`, size: 512, render: svg, padding: 512 * 0.14 },
+  { file: `${outDir}/apple-touch-icon.png`, size: 180, render: svg, padding: 0 },
+  // Source images for @capacitor/assets (Android/iOS app icon + splash generation).
+  { file: `${resourcesDir}/icon.png`, size: 1024, render: svg, padding: 0 },
+  { file: `${resourcesDir}/splash.png`, size: 2732, render: splashSvg, padding: 0 },
 ];
 
 for (const job of jobs) {
-  await sharp(Buffer.from(svg(job.size, job.padding)))
+  await sharp(Buffer.from(job.render(job.size, job.padding)))
     .png()
-    .toFile(`${outDir}/${job.file}`);
+    .toFile(job.file);
   console.log("wrote", job.file);
 }
