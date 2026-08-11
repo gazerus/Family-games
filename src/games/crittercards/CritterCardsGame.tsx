@@ -162,6 +162,13 @@ export function CritterCardsGame({ onExit }: GameProps) {
         return;
       }
       if (!isHost || !state) return;
+      if (type === "request-state") {
+        // The generic host-state resync doesn't know about per-player secret
+        // hands; re-send the requester's own hand so a reopened game screen
+        // doesn't show them an empty hand.
+        if (handsRef.current[senderId]) sendHand(senderId, handsRef.current[senderId]);
+        return;
+      }
       if (type === "play") {
         const { cardId, chosenColor } = payload as PlayPayload;
         applyPlay(state, senderId, cardId, chosenColor);

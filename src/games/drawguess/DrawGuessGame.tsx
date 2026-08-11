@@ -178,6 +178,14 @@ export function DrawGuessGame({ onExit }: GameProps) {
         setLocalWord((payload as WordPayload).word);
         return;
       }
+      if (type === "request-state") {
+        // The generic host-state resync doesn't know about the secret word;
+        // re-send it if the requester is the current drawer reconnecting.
+        if (isHost && hostWordRef.current && publicState?.currentDrawerId === senderId) {
+          send("word", { word: hostWordRef.current }, senderId);
+        }
+        return;
+      }
       if (type === "stroke") {
         canvasRef.current?.applyRemoteBatch(payload as StrokeBatch);
         return;

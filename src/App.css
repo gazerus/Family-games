@@ -668,6 +668,9 @@
   gap: 10px;
   padding: 16px;
   align-content: center;
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
 }
 
 .mm-card {
@@ -721,7 +724,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   transform: rotateY(180deg);
-  font-size: 30px;
+  font-size: clamp(28px, 9vw, 42px);
 }
 
 .mm-card--matched .mm-card-face--front {

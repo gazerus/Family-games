@@ -7,8 +7,20 @@ import { useGameChannel } from "./useGameChannel";
  * broadcasting the single source-of-truth `state` to everyone else. Other
  * clients are pure reflections of the host's broadcasts until the game
  * reaches `gameOverPhase`, at which point anyone can start a new one (and
- * become the new host). Also re-broadcasts state when someone new joins
- * mid-game, so latecomers aren't stuck looking at nothing.
+ * become the new host).
+ *
+ * Two things that would otherwise desync a purely-broadcast protocol:
+ *
+ * 1. Re-opening a game screen (switching tabs, going back to the hub and
+ *    back in) unmounts and remounts this hook, losing whatever state it had.
+ *    On (re)mount it broadcasts a `request-state`; the current host replies
+ *    with a fresh `state` so you land in whatever's already happening
+ *    instead of an empty "Start game" screen.
+ * 2. If two people tap "Start" close enough together that neither has heard
+ *    from the other yet, both self-declare host and run divergent games
+ *    that end up permanently waiting on each other. `canAdopt` breaks that
+ *    tie deterministically (lowest session id wins host), so the loser's
+ *    client snaps onto the winner's game instead of staying stuck.
  */
 export function useHostGameState<TState extends { phase: string }, TPayload = TState>(
   gameId: string,
@@ -21,11 +33,19 @@ export function useHostGameState<TState extends { phase: string }, TPayload = TS
   const [state, setState] = useState<TState | null>(null);
   const stateRef = useRef<TState | null>(null);
   const hostIdRef = useRef<string | null>(null);
+  const isHostRef = useRef(false);
   stateRef.current = state;
   hostIdRef.current = hostId;
+  isHostRef.current = hostId !== null && hostId === localSessionId;
 
   useEffect(() => {
     return onMessage((type, payload, senderId) => {
+      if (type === "request-state") {
+        if (isHostRef.current && stateRef.current && stateRef.current.phase !== gameOverPhase) {
+          send("state", stateRef.current as unknown as TPayload);
+        }
+        return;
+      }
       if (type !== "state") return;
       const currentHost = hostIdRef.current;
       const currentState = stateRef.current;
@@ -33,14 +53,24 @@ export function useHostGameState<TState extends { phase: string }, TPayload = TS
         currentHost === null ||
         senderId === currentHost ||
         currentState === null ||
-        currentState.phase === gameOverPhase;
+        currentState.phase === gameOverPhase ||
+        senderId < currentHost;
       if (!canAdopt) return;
       setHostId(senderId);
       setState(payload as unknown as TState);
     });
-  }, [onMessage, gameOverPhase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onMessage, gameOverPhase, send]);
 
-  const isHost = hostId !== null && hostId === localSessionId;
+  // Ask whoever's already hosting to catch us up, once we're actually
+  // able to send (i.e. the call has finished joining).
+  useEffect(() => {
+    if (!localSessionId) return;
+    send("request-state", {} as unknown as TPayload);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localSessionId]);
+
+  const isHost = isHostRef.current;
 
   const startAsHost = useCallback(
     (next: TState) => {
@@ -61,7 +91,7 @@ export function useHostGameState<TState extends { phase: string }, TPayload = TS
 
   const participantCount = participants.length;
   useEffect(() => {
-    if (isHost && stateRef.current && stateRef.current.phase !== gameOverPhase) {
+    if (isHostRef.current && stateRef.current && stateRef.current.phase !== gameOverPhase) {
       send("state", stateRef.current as unknown as TPayload);
     }
     // Only re-sync when the participant count changes, not on every state update.

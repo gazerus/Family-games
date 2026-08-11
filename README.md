@@ -139,9 +139,12 @@ load a blank page (index.html loads, but its JS/CSS asset paths 404).
   it's gone. Fine for a casual family room; would need a real backend (or
   something like Firebase) to change.
 - **No automatic host handover.** In every game, whoever taps "Start game"
-  runs that game's turn order and scoring for everyone else. If they drop
-  out mid-game, it can stall — anyone can tap "Start game" again to begin a
-  fresh one.
+  runs that game's turn order and scoring for everyone else — everyone
+  else's game screen resyncs to them automatically, including if they
+  switch tabs and come back mid-game. But if the *host specifically*
+  navigates away and back (or drops out), their own client forgets it was
+  hosting, and nobody automatically takes over — anyone can tap "Start
+  game" again to begin a fresh one.
 - **Connect Four is strictly 2-player** (it's just how the game works) and
   uses whichever two people happen to be in the room when it starts; anyone
   else currently in the call is a spectator for that game.

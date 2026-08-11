@@ -94,13 +94,17 @@ export const DrawCanvas = forwardRef<
     return () => observer.disconnect();
   }, []);
 
-  function relativePoint(e: React.PointerEvent<HTMLCanvasElement>) {
+  function pointFromClient(clientX: number, clientY: number) {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
     return {
-      x: (e.clientX - rect.left) / rect.width,
-      y: (e.clientY - rect.top) / rect.height,
+      x: (clientX - rect.left) / rect.width,
+      y: (clientY - rect.top) / rect.height,
     };
+  }
+
+  function relativePoint(e: React.PointerEvent<HTMLCanvasElement>) {
+    return pointFromClient(e.clientX, e.clientY);
   }
 
   function flush(finalStart: boolean) {
@@ -134,18 +138,31 @@ export const DrawCanvas = forwardRef<
 
   function handlePointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!interactive || !drawingRef.current) return;
-    const pt = relativePoint(e);
     const ctx = getCtx();
     const canvas = canvasRef.current;
-    const prev = bufferRef.current[bufferRef.current.length - 1];
-    if (ctx && canvas && prev) {
-      drawBatch(ctx, canvas.width, canvas.height, {
-        strokeId: strokeIdRef.current!,
-        points: [prev, pt],
-        start: false,
-      });
+
+    // Mobile browsers dispatch pointermove roughly once per frame, batching
+    // several real touch samples into it. Reading only e.clientX/Y drops the
+    // in-between samples and leaves visible gaps on fast strokes — walk the
+    // coalesced list instead so every sample gets drawn.
+    const native = e.nativeEvent;
+    const samples =
+      typeof native.getCoalescedEvents === "function" ? native.getCoalescedEvents() : [];
+    const points = (samples.length > 0 ? samples : [native]).map((ev) =>
+      pointFromClient(ev.clientX, ev.clientY)
+    );
+
+    for (const pt of points) {
+      const prev = bufferRef.current[bufferRef.current.length - 1];
+      if (ctx && canvas && prev) {
+        drawBatch(ctx, canvas.width, canvas.height, {
+          strokeId: strokeIdRef.current!,
+          points: [prev, pt],
+          start: false,
+        });
+      }
+      bufferRef.current.push(pt);
     }
-    bufferRef.current.push(pt);
     if (bufferRef.current.length >= 8) {
       flush(!sentFirstBatchRef.current);
       sentFirstBatchRef.current = true;
