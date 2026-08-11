@@ -27,16 +27,22 @@ function AppShell({ profile }: { profile: FamilyProfile }) {
   );
 }
 
+function roomFromLink(): string | null {
+  return new URLSearchParams(window.location.search).get("room");
+}
+
 function App() {
   const [profile, setProfile] = useState<FamilyProfile | null>(() => loadProfile());
 
   if (!profile) {
     return (
       <SetupScreen
-        initial={null}
+        initial={{ roomUrl: roomFromLink() ?? undefined }}
         onComplete={(p) => {
           saveProfile(p);
           setProfile(p);
+          // Drop ?room=... from the address bar now that it's saved on this device.
+          window.history.replaceState({}, "", window.location.pathname);
         }}
       />
     );

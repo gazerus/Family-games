@@ -124,6 +124,24 @@
   outline-offset: 1px;
 }
 
+.room-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--accent-bg);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.room-confirm .link-button {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
 .setup-error {
   color: var(--danger);
   font-size: 14px;
@@ -173,6 +191,17 @@
 
 .setup-help li {
   margin-bottom: 4px;
+}
+
+.setup-help code {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  word-break: break-all;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 5px;
 }
 
 /* Generic centered tab state */

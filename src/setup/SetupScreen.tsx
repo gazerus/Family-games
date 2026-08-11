@@ -11,6 +11,14 @@ function isLikelyDailyUrl(value: string): boolean {
   }
 }
 
+function roomNickname(url: string): string {
+  try {
+    return decodeURIComponent(new URL(url).pathname.replace(/^\/+/, "")) || "the family room";
+  } catch {
+    return "the family room";
+  }
+}
+
 export function SetupScreen({
   initial,
   onComplete,
@@ -18,8 +26,11 @@ export function SetupScreen({
   initial: Partial<FamilyProfile> | null;
   onComplete: (profile: FamilyProfile) => void;
 }) {
+  const linkedRoomUrl = initial?.roomUrl && isLikelyDailyUrl(initial.roomUrl) ? initial.roomUrl : null;
+
   const [name, setName] = useState(initial?.name ?? "");
   const [roomUrl, setRoomUrl] = useState(initial?.roomUrl ?? "");
+  const [editingRoom, setEditingRoom] = useState(!linkedRoomUrl);
   const [showHelp, setShowHelp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,18 +69,29 @@ export function SetupScreen({
             />
           </label>
 
-          <label className="field">
-            <span>Family room link</span>
-            <input
-              type="text"
-              value={roomUrl}
-              placeholder="https://yourfamily.daily.co/livingroom"
-              onChange={(e) => setRoomUrl(e.target.value)}
-              inputMode="url"
-              autoCapitalize="none"
-              autoCorrect="off"
-            />
-          </label>
+          {linkedRoomUrl && !editingRoom ? (
+            <div className="room-confirm">
+              <span>
+                ✓ Joining <strong>{roomNickname(linkedRoomUrl)}</strong>
+              </span>
+              <button type="button" className="link-button" onClick={() => setEditingRoom(true)}>
+                Not the right room?
+              </button>
+            </div>
+          ) : (
+            <label className="field">
+              <span>Family room link</span>
+              <input
+                type="text"
+                value={roomUrl}
+                placeholder="https://yourfamily.daily.co/livingroom"
+                onChange={(e) => setRoomUrl(e.target.value)}
+                inputMode="url"
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+            </label>
+          )}
 
           {error && <p className="setup-error">{error}</p>}
 
@@ -98,7 +120,12 @@ export function SetupScreen({
               <li>Copy the room URL it gives you.</li>
               <li>
                 Paste that <em>same</em> link into this screen on every
-                phone that should join (yours, the girls', mum's).
+                phone that should join (yours, the girls', mum's) — or
+                better, send everyone a link like
+                <br />
+                <code>https://gazerus.github.io/Family-games/?room=&lt;your room URL&gt;</code>
+                <br />
+                so it's pre-filled and they only have to type their name.
               </li>
             </ol>
             <p>
