@@ -59,6 +59,38 @@ This is a PWA, so "installing" it doesn't need an app store:
 
 It then opens full-screen like a normal app.
 
+## Getting the Android app (APK)
+
+If you'd rather hand someone an installable app than a web link, Android
+has that option — **iPhone doesn't** (Apple doesn't allow installing
+apps outside the App Store this way, so iPhone family members should stick
+to the web link above instead; it's fully capable, this is just an
+alternative for Android).
+
+1. Grab the latest build from this repo's
+   [Releases page](https://github.com/gazerus/family-games/releases/tag/android-latest)
+   — always the file named `family-games.apk`. It rebuilds automatically
+   from `main` (see `.github/workflows/build-apk.yml`), so that one link is
+   always the newest version.
+2. Send that `.apk` file to the phone however's easiest — email, a chat
+   app, a USB cable, Google Drive.
+3. Open it on the phone. Android will ask to allow installing from that
+   source the first time (Settings will prompt you directly if you just
+   tap the file) — that's a one-time permission per app source, not an
+   account or sign-up.
+4. Open the installed app, paste the Daily.co room link once, and you're
+   in — same as the web version from here.
+
+Once installed, the app runs entirely from what's bundled inside the APK;
+it doesn't talk to GitHub (or need a browser) at all after that first
+install. The only thing it ever calls out to is Daily.co, for the actual
+video/game connection.
+
+**The trade-off versus the web link**: no auto-updates. The web version
+updates itself the instant it's redeployed; the APK only updates when
+someone downloads a fresh copy and reinstalls over the old one. Fine for
+occasional updates, just not instant.
+
 ## Adding a new game
 
 Games are self-contained and register themselves in one place. To add one:
@@ -125,6 +157,26 @@ case** — GitHub Pages URLs are case-sensitive. This repo is
 `gazerus/Family-games` (capital F), so `base` is `/Family-games/`; if you
 rename the repo, update all three to match exactly or the deployed app will
 load a blank page (index.html loads, but its JS/CSS asset paths 404).
+
+## Building the Android app yourself
+
+Normally you don't need to — the GitHub Actions workflow above does this
+on every push and publishes the result. This is only for building it
+locally (e.g. to test on a plugged-in device before pushing):
+
+```bash
+npm run build:apk       # capacitor-mode web build (root-relative paths)
+npx cap sync android     # copies it into android/, updates native config
+cd android && ./gradlew assembleDebug
+# → android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Needs a JDK (17+) and the Android SDK installed locally — Android Studio
+gives you both, or `npx cap open android` opens the project there directly
+if it can find your install. Both build targets (`npm run build` for
+Pages, `npm run build:apk` for the APK) come from the same `src/` — see
+the comment at the top of `vite.config.ts` for why they need different
+settings.
 
 ## What this doesn't do (yet)
 
