@@ -4,6 +4,7 @@ import {
   useImperativeHandle,
   useLayoutEffect,
   useRef,
+  useState,
 } from "react";
 
 export interface StrokeBatch {
@@ -11,6 +12,11 @@ export interface StrokeBatch {
   points: { x: number; y: number }[];
   start: boolean;
 }
+
+// Diagnostic-only: add ?dgDebug=1 to the URL to see the canvas's real DOM
+// bounds (red outline) plus live rect/bitmap/pointer readouts, to track
+// down reports of dead zones that don't register touches. Inert otherwise.
+const DEBUG = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("dgDebug") === "1";
 
 export interface DrawCanvasHandle {
   clear: () => void;
@@ -56,6 +62,8 @@ export const DrawCanvas = forwardRef<
   const strokeIdRef = useRef<string | null>(null);
   const bufferRef = useRef<{ x: number; y: number }[]>([]);
   const sentFirstBatchRef = useRef(false);
+  const moveCountRef = useRef(0);
+  const [debugInfo, setDebugInfo] = useState<Record<string, string | number>>({});
 
   const getCtx = useCallback(() => {
     const canvas = canvasRef.current;
@@ -92,6 +100,20 @@ export const DrawCanvas = forwardRef<
     if (!canvas) return;
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
+
+      if (DEBUG) {
+        setDebugInfo((prev) => ({
+          ...prev,
+          rectW: rect.width.toFixed(1),
+          rectH: rect.height.toFixed(1),
+          rectTop: rect.top.toFixed(1),
+          rectLeft: rect.left.toFixed(1),
+          rectBottom: rect.bottom.toFixed(1),
+          bitmapW: canvas.width,
+          bitmapH: canvas.height,
+        }));
+      }
+
       if (rect.width === 0 || rect.height === 0) return;
       const ratio = window.devicePixelRatio || 1;
       const newWidth = Math.max(1, Math.round(rect.width * ratio));
@@ -111,6 +133,10 @@ export const DrawCanvas = forwardRef<
 
       if (snapshot) {
         getCtx()?.drawImage(snapshot, 0, 0, snapshot.width, snapshot.height, 0, 0, newWidth, newHeight);
+      }
+
+      if (DEBUG) {
+        setDebugInfo((prev) => ({ ...prev, bitmapW: newWidth, bitmapH: newHeight, dpr: ratio }));
       }
     };
     resize();
@@ -154,6 +180,7 @@ export const DrawCanvas = forwardRef<
     strokeIdRef.current = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     bufferRef.current = [pt];
     sentFirstBatchRef.current = false;
+    moveCountRef.current = 0;
     const ctx = getCtx();
     const canvas = canvasRef.current;
     if (ctx && canvas) {
@@ -162,6 +189,17 @@ export const DrawCanvas = forwardRef<
         points: [pt, pt],
         start: true,
       });
+    }
+    if (DEBUG) {
+      setDebugInfo((prev) => ({
+        ...prev,
+        downTarget: (e.target as Element).tagName,
+        downClientX: e.clientX.toFixed(0),
+        downClientY: e.clientY.toFixed(0),
+        downFx: pt.x.toFixed(3),
+        downFy: pt.y.toFixed(3),
+        moveCount: 0,
+      }));
     }
   }
 
@@ -192,27 +230,75 @@ export const DrawCanvas = forwardRef<
       }
       bufferRef.current.push(pt);
     }
+    moveCountRef.current += points.length;
+    if (DEBUG) {
+      const lastPt = points[points.length - 1];
+      setDebugInfo((prev) => ({
+        ...prev,
+        moveCount: moveCountRef.current,
+        moveClientX: e.clientX.toFixed(0),
+        moveClientY: e.clientY.toFixed(0),
+        moveFx: lastPt.x.toFixed(3),
+        moveFy: lastPt.y.toFixed(3),
+      }));
+    }
     if (bufferRef.current.length >= 8) {
       flush(!sentFirstBatchRef.current);
       sentFirstBatchRef.current = true;
     }
   }
 
-  function handlePointerUp() {
+  function handlePointerUp(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!interactive || !drawingRef.current) return;
     drawingRef.current = false;
     flush(!sentFirstBatchRef.current);
     strokeIdRef.current = null;
+    if (DEBUG) {
+      setDebugInfo((prev) => ({
+        ...prev,
+        upClientX: e.clientX.toFixed(0),
+        upClientY: e.clientY.toFixed(0),
+        totalMoves: moveCountRef.current,
+      }));
+    }
   }
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={`draw-canvas ${interactive ? "draw-canvas--interactive" : ""}`}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className={`draw-canvas ${interactive ? "draw-canvas--interactive" : ""}`}
+        style={DEBUG ? { outline: "2px solid #ff0000", outlineOffset: "-2px" } : undefined}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      />
+      {DEBUG && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: "rgba(0,0,0,0.85)",
+            color: "#4ade80",
+            fontSize: 10,
+            fontFamily: "monospace",
+            padding: "6px 8px",
+            zIndex: 9999,
+            lineHeight: 1.5,
+            maxHeight: "40vh",
+            overflowY: "auto",
+            whiteSpace: "pre-wrap",
+            pointerEvents: "none",
+          }}
+        >
+          {Object.entries(debugInfo)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join("  |  ")}
+        </div>
+      )}
+    </>
   );
 });

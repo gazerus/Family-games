@@ -171,6 +171,14 @@ export function DrawGuessGame({ onExit }: GameProps) {
     startGame();
   }
 
+  function evaluateGuess(current: PublicState, guesserId: string, text: string) {
+    if (current.phase !== "drawing" || !hostWordRef.current) return;
+    const correct = text.trim().toLowerCase() === hostWordRef.current.toLowerCase();
+    if (!correct) return;
+    const scores = { ...current.scores, [guesserId]: (current.scores[guesserId] ?? 0) + 1 };
+    endRound({ ...current, scores }, "correct", guesserId);
+  }
+
   // Wire up incoming messages the shared host-state hook doesn't already handle.
   useEffect(() => {
     return onMessage((type, payload, senderId, sender) => {
@@ -197,14 +205,7 @@ export function DrawGuessGame({ onExit }: GameProps) {
       if (type === "guess") {
         const text = (payload as GuessPayload).text;
         pushFeed({ kind: "guess", text, sender });
-        if (isHost && publicState?.phase === "drawing" && hostWordRef.current) {
-          const correct = text.trim().toLowerCase() === hostWordRef.current.toLowerCase();
-          if (correct) {
-            const state = publicState;
-            const scores = { ...state.scores, [senderId]: (state.scores[senderId] ?? 0) + 1 };
-            endRound({ ...state, scores }, "correct", senderId);
-          }
-        }
+        if (isHost && publicState) evaluateGuess(publicState, senderId, text);
         return;
       }
     });
@@ -284,6 +285,10 @@ export function DrawGuessGame({ onExit }: GameProps) {
     const text = guessDraft.trim();
     if (!text) return;
     pushFeed({ kind: "guess", text, sender: localName });
+    // Broadcasts don't loop back to their own sender, so if I'm the host my
+    // own guess would otherwise never reach the scoring check below — apply
+    // it directly here, same as every other game does for the host's moves.
+    if (isHost && publicState) evaluateGuess(publicState, localSessionId ?? "", text);
     send("guess", { text });
     setGuessDraft("");
   }
