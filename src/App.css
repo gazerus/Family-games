@@ -37,6 +37,36 @@
   opacity: 0.55;
 }
 
+.invite-corner-button {
+  right: 54px;
+}
+
+.invite-toast {
+  position: fixed;
+  top: max(52px, calc(env(safe-area-inset-top) + 52px));
+  right: 10px;
+  background: var(--text-h);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  z-index: 20;
+  animation: fade-in-down 0.2s ease;
+}
+
+@keyframes fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Tab bar */
 
 .tab-bar {

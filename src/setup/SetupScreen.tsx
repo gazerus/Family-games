@@ -126,13 +126,10 @@ export function SetupScreen({
               <li>Click "Create room" — leave the defaults, it's fine.</li>
               <li>Copy the room URL it gives you.</li>
               <li>
-                Paste that <em>same</em> link into this screen on every
-                phone that should join (yours, the girls', mum's) — or
-                better, send everyone a link like
-                <br />
-                <code>https://gazerus.github.io/Family-games/?room=&lt;your room URL&gt;</code>
-                <br />
-                so it's pre-filled and they only have to type their name.
+                Paste that link into this screen and join. Once you're in,
+                tap the 🔗 button in the top corner to share a ready-to-go
+                invite link with everyone else — they just tap it and type
+                their name, no room link needed on their end.
               </li>
             </ol>
             <p>

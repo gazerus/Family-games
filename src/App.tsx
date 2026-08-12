@@ -31,9 +31,38 @@ function roomFromLink(): string | null {
   return new URLSearchParams(window.location.search).get("room");
 }
 
+function inviteLinkFor(roomUrl: string): string {
+  return `${window.location.origin}${import.meta.env.BASE_URL}?room=${encodeURIComponent(roomUrl)}`;
+}
+
 function App() {
   const [profile, setProfile] = useState<FamilyProfile | null>(() => loadProfile());
   const [editing, setEditing] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
+
+  async function handleInvite() {
+    if (!profile) return;
+    const link = inviteLinkFor(profile.roomUrl);
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Family Room",
+          text: "Join our family room — tap this link, then just type your name:",
+          url: link,
+        });
+      } catch {
+        // Share sheet dismissed — nothing to do.
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      setInviteCopied(true);
+      setTimeout(() => setInviteCopied(false), 2000);
+    } catch {
+      window.prompt("Copy this link to send it:", link);
+    }
+  }
 
   if (!profile || editing) {
     return (
@@ -55,6 +84,14 @@ function App() {
     <div className="app-root">
       <AppShell key={`${profile.roomUrl}:${profile.name}`} profile={profile} />
       <button
+        className="settings-corner-button invite-corner-button"
+        onClick={handleInvite}
+        aria-label="Share invite link"
+        title="Share invite link"
+      >
+        🔗
+      </button>
+      <button
         className="settings-corner-button"
         onClick={() => setEditing(true)}
         aria-label="Change name or room"
@@ -62,6 +99,7 @@ function App() {
       >
         ⚙️
       </button>
+      {inviteCopied && <div className="invite-toast">Link copied!</div>}
     </div>
   );
 }
