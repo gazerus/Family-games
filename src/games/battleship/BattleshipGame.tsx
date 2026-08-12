@@ -27,6 +27,13 @@ interface Shot {
   hit: boolean;
 }
 
+interface SunkEvent {
+  id: string;
+  shooterId: string;
+  ownerId: string;
+  size: number;
+}
+
 interface PublicState {
   phase: "placing" | "playing" | "game-over";
   hostId: string;
@@ -36,6 +43,7 @@ interface PublicState {
   winnerId: string | null;
   shots: Record<string, Shot[]>;
   shipsRemaining: Record<string, number>;
+  lastSunk: SunkEvent | null;
 }
 
 interface FleetPayload {
@@ -86,7 +94,9 @@ export function BattleshipGame({ onExit }: GameProps) {
   const [placedShips, setPlacedShips] = useState<Ship[]>([]);
   const [orientation, setOrientation] = useState<"h" | "v">("h");
   const [placeError, setPlaceError] = useState(false);
+  const [sunkToast, setSunkToast] = useState<string | null>(null);
   const fleetsRef = useRef<Record<string, Ship[]>>({});
+  const processedSunkId = useRef<string | null>(null);
 
   function sendFleet(playerId: string, ships: Ship[]) {
     if (playerId === localSessionId) setMyFleet(ships);
@@ -110,6 +120,7 @@ export function BattleshipGame({ onExit }: GameProps) {
         shipsRemaining: Object.fromEntries(
           current.players.map((p) => [p.sessionId, fleetsRef.current[p.sessionId]?.length ?? SHIP_SIZES.length])
         ),
+        lastSunk: null,
       });
       // Push everyone's own fleet back to them now — covers the case where
       // someone reopened this screen while waiting and lost their local copy.
@@ -132,12 +143,19 @@ export function BattleshipGame({ onExit }: GameProps) {
     const hit = fleet.some((ship) => ship.some((c) => c.row === row && c.col === col));
 
     const nextShots = { ...current.shots, [senderId]: [...myShots, { row, col, hit }] };
+    const prevHitCells = new Set(myShots.filter((s) => s.hit).map((s) => cellKey(s.row, s.col)));
     const hitCells = new Set(
       nextShots[senderId].filter((s) => s.hit).map((s) => cellKey(s.row, s.col))
     );
     const remaining = countShipsAfloat(fleet, hitCells);
     const shipsRemaining = { ...current.shipsRemaining, [opponent.sessionId]: remaining };
     const won = remaining === 0;
+
+    const justSunk = fleet.find(
+      (ship) =>
+        !ship.every((c) => prevHitCells.has(cellKey(c.row, c.col))) &&
+        ship.every((c) => hitCells.has(cellKey(c.row, c.col)))
+    );
 
     updateState({
       ...current,
@@ -146,6 +164,9 @@ export function BattleshipGame({ onExit }: GameProps) {
       phase: won ? "game-over" : "playing",
       winnerId: won ? senderId : null,
       currentPlayerId: won ? senderId : opponent.sessionId,
+      lastSunk: justSunk
+        ? { id: `${Date.now()}-${row}-${col}`, shooterId: senderId, ownerId: opponent.sessionId, size: justSunk.length }
+        : current.lastSunk,
     });
   }
 
@@ -174,6 +195,20 @@ export function BattleshipGame({ onExit }: GameProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onMessage, isHost, state]);
 
+  useEffect(() => {
+    const evt = state?.lastSunk;
+    if (!evt || processedSunkId.current === evt.id) return;
+    processedSunkId.current = evt.id;
+    const isMe = evt.shooterId === localSessionId;
+    const ownerName = state?.players.find((p) => p.sessionId === evt.ownerId)?.name ?? "their";
+    const shooterName = state?.players.find((p) => p.sessionId === evt.shooterId)?.name ?? "Someone";
+    setSunkToast(
+      isMe ? `You sank ${ownerName}'s ${shipName(evt.size)}!` : `${shooterName} sank your ${shipName(evt.size)}!`
+    );
+    const t = setTimeout(() => setSunkToast(null), 3200);
+    return () => clearTimeout(t);
+  }, [state?.lastSunk, state?.players, localSessionId]);
+
   function startGame() {
     const order = presentPlayers.slice(0, 2).map((p) => ({ sessionId: p.sessionId, name: p.userName }));
     if (order.length < 2) return;
@@ -182,6 +217,8 @@ export function BattleshipGame({ onExit }: GameProps) {
     setMyFleet([]);
     setPlacedShips([]);
     setOrientation("h");
+    setSunkToast(null);
+    processedSunkId.current = null;
     startAsHost({
       phase: "placing",
       hostId: localSessionId ?? "",
@@ -191,6 +228,7 @@ export function BattleshipGame({ onExit }: GameProps) {
       winnerId: null,
       shots: {},
       shipsRemaining: {},
+      lastSunk: null,
     });
   }
 
@@ -374,6 +412,8 @@ export function BattleshipGame({ onExit }: GameProps) {
         </button>
         <div className="bs-turn-banner">{myTurn ? "Your turn — fire away" : `${opponent?.name}'s turn`}</div>
       </div>
+
+      {sunkToast && <div className="bs-sunk-toast">💥 {sunkToast}</div>}
 
       <div className="bs-scoreboard">
         <span className="dom-opponent-chip">You: {state.shipsRemaining[localSessionId ?? ""] ?? 0} ships left</span>
