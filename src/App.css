@@ -1309,9 +1309,22 @@
   margin-bottom: 6px;
 }
 
+/* Wraps the grid plus its ship/marker overlays so they line up with
+   percentage-based positioning instead of measuring pixels. */
+.bs-grid-stack {
+  position: relative;
+  width: 100%;
+}
+
 .bs-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  /* minmax(0, 1fr), not bare 1fr: a bare 1fr track still won't shrink below
+     its content's min-content size, so a cell with any content (an emoji,
+     text) can force that whole column wider than its neighbours and the
+     grid visibly resizes as cells fill in. Cells here are always empty —
+     icons live in an absolutely-positioned overlay on top — but keep this
+     as a second line of defense. */
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 3px;
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -1321,11 +1334,9 @@
   background: linear-gradient(160deg, #cfeeff, #a9dcf5);
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: clamp(10px, 3.2vw, 16px);
   padding: 0;
+  min-width: 0;
+  min-height: 0;
 }
 
 .bs-cell:disabled {
@@ -1336,14 +1347,60 @@
   cursor: default;
 }
 
-.bs-cell--ship {
-  background: linear-gradient(160deg, #94a3b8, #64748b);
-}
-
 .bs-cell--hit {
   background: linear-gradient(160deg, #fca5a5, #ef4444);
 }
 
 .bs-cell--miss {
-  background: linear-gradient(160deg, #e0f2fe, #bae6fd);
+  background: linear-gradient(160deg, #1e3a8a, #1e293b);
+}
+
+/* Ship hulls and hit/miss icons are positioned by percentage over the grid,
+   independent of the cell buttons underneath, so firing never nudges the
+   grid's own sizing. */
+.bs-hulls,
+.bs-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bs-hull {
+  position: absolute;
+  box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.bs-hull--h {
+  padding: 14% 4%;
+  clip-path: polygon(0% 15%, 0% 85%, 82% 85%, 100% 50%, 82% 15%);
+}
+
+.bs-hull--v {
+  padding: 4% 14%;
+  clip-path: polygon(15% 0%, 85% 0%, 85% 82%, 50% 100%, 15% 82%);
+}
+
+.bs-marker {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(10px, 3.2vw, 16px);
+  line-height: 1;
+}
+
+.bs-place-hint {
+  text-align: center;
+  font-size: 13px;
+  opacity: 0.75;
+  padding: 0 16px;
+  min-height: 34px;
+}
+
+.bs-placement-controls {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 4px 10px;
 }
