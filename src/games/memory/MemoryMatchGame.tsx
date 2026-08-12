@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { useHostGameState } from "../useHostGameState";
 import type { GameProps } from "../types";
@@ -8,6 +8,7 @@ import { colorForPlayerIndex, paleGradientForPlayerIndex } from "../playerColors
 const GAME_ID = "memory-match";
 const PAIR_COUNT = 10;
 const RESOLVE_PAUSE_MS = 1000;
+const WIN_FREEZE_MS = 1800;
 
 interface Card {
   id: number;
@@ -50,6 +51,18 @@ export function MemoryMatchGame({ onExit }: GameProps) {
   } = useHostGameState<PublicState, MemoryPayload>(GAME_ID, "game-over");
 
   const resolveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [revealWinner, setRevealWinner] = useState(false);
+
+  // Keep the final board (with each pair's color still showing who won it)
+  // visible for a beat before swapping to the trophy screen.
+  useEffect(() => {
+    if (state?.phase !== "game-over") {
+      setRevealWinner(false);
+      return;
+    }
+    const t = setTimeout(() => setRevealWinner(true), WIN_FREEZE_MS);
+    return () => clearTimeout(t);
+  }, [state?.phase]);
 
   function applyFlip(current: PublicState, cardId: number) {
     const card = current.cards.find((c) => c.id === cardId);
@@ -169,9 +182,10 @@ export function MemoryMatchGame({ onExit }: GameProps) {
     );
   }
 
-  if (state.phase === "game-over") {
-    const winner = scoreboard[0];
-    const isTie = scoreboard.length > 1 && scoreboard[1].score === winner.score;
+  const winner = scoreboard[0];
+  const isTie = scoreboard.length > 1 && scoreboard[1].score === winner.score;
+
+  if (state.phase === "game-over" && revealWinner) {
     return (
       <div className="dg-lobby">
         <h2>🏆 {isTie ? "It's a tie!" : `${winner.name} wins!`}</h2>
@@ -193,9 +207,10 @@ export function MemoryMatchGame({ onExit }: GameProps) {
     );
   }
 
+  const isFrozenWin = state.phase === "game-over";
   const currentPlayerIndex = state.players.findIndex((p) => p.sessionId === state.currentPlayerId);
   const currentPlayer = state.players[currentPlayerIndex];
-  const myTurn = state.currentPlayerId === localSessionId;
+  const myTurn = !isFrozenWin && state.currentPlayerId === localSessionId;
 
   return (
     <div className="memory-game">
@@ -205,9 +220,13 @@ export function MemoryMatchGame({ onExit }: GameProps) {
         </button>
         <div
           className="mm-turn-banner"
-          style={{ color: colorForPlayerIndex(currentPlayerIndex) }}
+          style={{ color: isFrozenWin ? undefined : colorForPlayerIndex(currentPlayerIndex) }}
         >
-          {myTurn ? "Your turn" : `${currentPlayer.name}'s turn`}
+          {isFrozenWin
+            ? `🏆 ${isTie ? "It's a tie!" : `${winner.name} wins!`}`
+            : myTurn
+              ? "Your turn"
+              : `${currentPlayer.name}'s turn`}
         </div>
       </div>
 

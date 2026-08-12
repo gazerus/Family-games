@@ -6,6 +6,7 @@ import { shuffle } from "../shuffle";
 import { COLORS, HAND_SIZE, cardMatches, makeDeck, type Card, type Color } from "./deck";
 
 const GAME_ID = "critter-cards";
+const WIN_FREEZE_MS = 2200;
 
 interface PublicPlayer {
   sessionId: string;
@@ -51,9 +52,11 @@ export function CritterCardsGame({ onExit }: GameProps) {
 
   const [myHand, setMyHand] = useState<Card[]>([]);
   const [pendingWildCard, setPendingWildCard] = useState<Card | null>(null);
+  const [revealWinner, setRevealWinner] = useState(false);
   const handsRef = useRef<Record<string, Card[]>>({});
   const drawPileRef = useRef<Card[]>([]);
   const discardRef = useRef<Card[]>([]);
+  const autoEndedRef = useRef(false);
 
   function sendHand(playerId: string, hand: Card[]) {
     if (playerId === localSessionId) setMyHand(hand);
@@ -183,6 +186,32 @@ export function CritterCardsGame({ onExit }: GameProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onMessage, isHost, state]);
 
+  // If you drew and genuinely have nothing playable (including the card you
+  // just drew), there's no decision left to make — pass automatically
+  // instead of making you tap "End turn" for a foregone conclusion.
+  useEffect(() => {
+    if (!state || state.currentPlayerId !== localSessionId || !state.hasDrawnThisTurn) {
+      autoEndedRef.current = false;
+      return;
+    }
+    const canPlay = myHand.some((c) => cardMatches(c, state.activeColor, state.topCard));
+    if (canPlay || autoEndedRef.current) return;
+    autoEndedRef.current = true;
+    handleEndTurn();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, myHand, localSessionId]);
+
+  // Keep the winning board visible for a beat before swapping to the trophy
+  // screen, so everyone can actually see the winning card played.
+  useEffect(() => {
+    if (state?.phase !== "game-over") {
+      setRevealWinner(false);
+      return;
+    }
+    const t = setTimeout(() => setRevealWinner(true), WIN_FREEZE_MS);
+    return () => clearTimeout(t);
+  }, [state?.phase, state?.winnerId]);
+
   function startGame() {
     const order = presentPlayers.map((p) => ({ sessionId: p.sessionId, name: p.userName }));
     if (order.length < 2) return;
@@ -263,7 +292,7 @@ export function CritterCardsGame({ onExit }: GameProps) {
     );
   }
 
-  if (state.phase === "game-over") {
+  if (state.phase === "game-over" && revealWinner) {
     const winner = state.players.find((p) => p.sessionId === state.winnerId);
     return (
       <div className="dg-lobby">
@@ -278,10 +307,12 @@ export function CritterCardsGame({ onExit }: GameProps) {
     );
   }
 
-  const myTurn = state.currentPlayerId === localSessionId;
+  const isFrozenWin = state.phase === "game-over";
+  const myTurn = !isFrozenWin && state.currentPlayerId === localSessionId;
   const currentPlayer = state.players.find((p) => p.sessionId === state.currentPlayerId);
   const canPlayNow = myTurn && myHand.some((c) => cardMatches(c, state.activeColor, state.topCard));
   const opponents = state.players.filter((p) => p.sessionId !== localSessionId);
+  const frozenWinner = isFrozenWin ? state.players.find((p) => p.sessionId === state.winnerId) : null;
 
   return (
     <div className="critter-cards-game">
@@ -289,7 +320,9 @@ export function CritterCardsGame({ onExit }: GameProps) {
         <button className="link-button dg-exit" onClick={onExit}>
           ← Games
         </button>
-        <div className="cc-turn-banner">{myTurn ? "Your turn" : `${currentPlayer?.name}'s turn`}</div>
+        <div className="cc-turn-banner">
+          {isFrozenWin ? `🏆 ${frozenWinner?.name ?? "Someone"} wins!` : myTurn ? "Your turn" : `${currentPlayer?.name}'s turn`}
+        </div>
       </div>
 
       <div className="cc-opponents">
@@ -328,15 +361,15 @@ export function CritterCardsGame({ onExit }: GameProps) {
         ))}
       </div>
 
-      {myTurn && !canPlayNow && !state.hasDrawnThisTurn && (
+      {myTurn && !state.hasDrawnThisTurn && (
         <div className="dom-actions">
-          <button className="primary-button" onClick={handleDraw}>
-            Draw a card
+          <button className={canPlayNow ? "link-button" : "primary-button"} onClick={handleDraw}>
+            {canPlayNow ? "Draw instead" : "Draw a card"}
           </button>
         </div>
       )}
 
-      {myTurn && state.hasDrawnThisTurn && (
+      {myTurn && state.hasDrawnThisTurn && canPlayNow && (
         <div className="dom-actions">
           <button className="link-button" onClick={handleEndTurn}>
             End turn

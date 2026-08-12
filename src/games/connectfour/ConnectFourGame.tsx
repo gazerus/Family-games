@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useHostGameState } from "../useHostGameState";
 import type { GameProps } from "../types";
 
 const GAME_ID = "connect-four";
+const WIN_FREEZE_MS = 2200;
 const ROWS = 6;
 const COLS = 7;
 const DIRECTIONS: [number, number][] = [
@@ -70,6 +71,19 @@ export function ConnectFourGame({ onExit }: GameProps) {
     localSessionId,
     presentPlayers,
   } = useHostGameState<PublicState, ConnectFourPayload>(GAME_ID, "game-over");
+
+  const [revealWinner, setRevealWinner] = useState(false);
+
+  // Keep the winning board (with the four-in-a-row highlighted) visible for
+  // a beat before swapping to the trophy screen.
+  useEffect(() => {
+    if (state?.phase !== "game-over") {
+      setRevealWinner(false);
+      return;
+    }
+    const t = setTimeout(() => setRevealWinner(true), WIN_FREEZE_MS);
+    return () => clearTimeout(t);
+  }, [state?.phase, state?.winnerId]);
 
   function applyDrop(current: PublicState, col: number) {
     if (current.phase !== "playing") return;
@@ -159,7 +173,7 @@ export function ConnectFourGame({ onExit }: GameProps) {
     );
   }
 
-  if (state.phase === "game-over") {
+  if (state.phase === "game-over" && revealWinner) {
     const winner = state.players.find((p) => p.sessionId === state.winnerId);
     const winnerIdx = winner ? playerIndex.get(winner.sessionId)! : -1;
     return (
@@ -177,10 +191,12 @@ export function ConnectFourGame({ onExit }: GameProps) {
     );
   }
 
-  const myTurn = state.currentPlayerId === localSessionId;
+  const isFrozenWin = state.phase === "game-over";
+  const myTurn = !isFrozenWin && state.currentPlayerId === localSessionId;
   const currentIdx = playerIndex.get(state.currentPlayerId) ?? 0;
   const currentPlayer = state.players[currentIdx];
   const winningSet = new Set((state.winningCells ?? []).map(([r, c]) => `${r}-${c}`));
+  const frozenWinner = isFrozenWin ? state.players.find((p) => p.sessionId === state.winnerId) : null;
 
   return (
     <div className="connect-four-game">
@@ -189,7 +205,11 @@ export function ConnectFourGame({ onExit }: GameProps) {
           ← Games
         </button>
         <div className="c4-turn-banner">
-          {DISC_EMOJI[currentIdx]} {myTurn ? "Your turn" : `${currentPlayer.name}'s turn`}
+          {isFrozenWin
+            ? frozenWinner
+              ? `${DISC_EMOJI[playerIndex.get(frozenWinner.sessionId) ?? 0]} ${frozenWinner.name} wins!`
+              : "🤝 It's a draw!"
+            : `${DISC_EMOJI[currentIdx]} ${myTurn ? "Your turn" : `${currentPlayer.name}'s turn`}`}
         </div>
       </div>
 

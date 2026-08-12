@@ -63,6 +63,7 @@ export function SnakesLaddersGame({ onExit }: GameProps) {
   const [dieFace, setDieFace] = useState(1);
   const [rolling, setRolling] = useState(false);
   const [slidingPlayerId, setSlidingPlayerId] = useState<string | null>(null);
+  const [revealWinner, setRevealWinner] = useState(false);
   const processedMoveId = useRef<string | null>(null);
 
   const boardRef = useRef<HTMLDivElement>(null);
@@ -148,6 +149,25 @@ export function SnakesLaddersGame({ onExit }: GameProps) {
       clearTimeout(rollTimeout);
     };
   }, [state?.lastMove]);
+
+  // Don't cut to the trophy screen until the token's actually finished
+  // hopping (and sliding, if it landed on a snake/ladder) to its final
+  // square — sized to the real animation length, not a guess, so a long
+  // winning roll never gets clipped and a short one doesn't leave you
+  // waiting on a blank pause.
+  useEffect(() => {
+    if (state?.phase !== "game-over") {
+      setRevealWinner(false);
+      return;
+    }
+    const move = state.lastMove;
+    const beforeConnector = move ? (move.connector ? move.connector.from : move.landingSquare) : 0;
+    const hops = move ? Math.max(0, beforeConnector - move.from) : 0;
+    const connectorTime = move?.connector ? CONNECTOR_PAUSE_MS + CONNECTOR_SLIDE_MS : 0;
+    const duration = DIE_ROLL_MS + hops * HOP_MS + connectorTime + 700;
+    const t = setTimeout(() => setRevealWinner(true), duration);
+    return () => clearTimeout(t);
+  }, [state?.phase, state?.winnerId, state?.lastMove]);
 
   function applyRoll(current: PublicState) {
     if (current.phase !== "playing") return;
@@ -241,7 +261,7 @@ export function SnakesLaddersGame({ onExit }: GameProps) {
     );
   }
 
-  if (state.phase === "game-over") {
+  if (state.phase === "game-over" && revealWinner) {
     const winner = state.players.find((p) => p.sessionId === state.winnerId);
     return (
       <div className="dg-lobby">
@@ -256,7 +276,7 @@ export function SnakesLaddersGame({ onExit }: GameProps) {
     );
   }
 
-  const myTurn = state.currentPlayerId === localSessionId;
+  const myTurn = state.phase === "playing" && state.currentPlayerId === localSessionId;
   const currentIdx = state.players.findIndex((p) => p.sessionId === state.currentPlayerId);
   const currentPlayer = state.players[currentIdx];
 

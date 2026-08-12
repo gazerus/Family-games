@@ -15,6 +15,7 @@ import {
 import { ShipHull, shipName } from "./ShipHull";
 
 const GAME_ID = "battleship";
+const WIN_FREEZE_MS = 3400;
 
 interface PublicPlayer {
   sessionId: string;
@@ -95,6 +96,7 @@ export function BattleshipGame({ onExit }: GameProps) {
   const [orientation, setOrientation] = useState<"h" | "v">("h");
   const [placeError, setPlaceError] = useState(false);
   const [sunkToast, setSunkToast] = useState<string | null>(null);
+  const [revealWinner, setRevealWinner] = useState(false);
   const fleetsRef = useRef<Record<string, Ship[]>>({});
   const processedSunkId = useRef<string | null>(null);
 
@@ -209,6 +211,17 @@ export function BattleshipGame({ onExit }: GameProps) {
     return () => clearTimeout(t);
   }, [state?.lastSunk, state?.players, localSessionId]);
 
+  // Keep the final boards (including the last "sunk" toast) visible for a
+  // beat before swapping to the trophy screen.
+  useEffect(() => {
+    if (state?.phase !== "game-over") {
+      setRevealWinner(false);
+      return;
+    }
+    const t = setTimeout(() => setRevealWinner(true), WIN_FREEZE_MS);
+    return () => clearTimeout(t);
+  }, [state?.phase, state?.winnerId]);
+
   function startGame() {
     const order = presentPlayers.slice(0, 2).map((p) => ({ sessionId: p.sessionId, name: p.userName }));
     if (order.length < 2) return;
@@ -291,7 +304,7 @@ export function BattleshipGame({ onExit }: GameProps) {
     );
   }
 
-  if (state.phase === "game-over") {
+  if (state.phase === "game-over" && revealWinner) {
     const winner = state.players.find((p) => p.sessionId === state.winnerId);
     return (
       <div className="dg-lobby">
@@ -390,10 +403,12 @@ export function BattleshipGame({ onExit }: GameProps) {
     );
   }
 
-  const myTurn = state.currentPlayerId === localSessionId;
+  const isFrozenWin = state.phase === "game-over";
+  const myTurn = !isFrozenWin && state.currentPlayerId === localSessionId;
   const opponent = state.players.find((p) => p.sessionId !== localSessionId);
   const myShots = state.shots[localSessionId ?? ""] ?? [];
   const theirShots = opponent ? state.shots[opponent.sessionId] ?? [] : [];
+  const frozenWinner = isFrozenWin ? state.players.find((p) => p.sessionId === state.winnerId) : null;
 
   const cells = Array.from({ length: BOARD_SIZE }, (_, row) =>
     Array.from({ length: BOARD_SIZE }, (_, col) => ({ row, col }))
@@ -410,7 +425,13 @@ export function BattleshipGame({ onExit }: GameProps) {
         <button className="link-button dg-exit" onClick={onExit}>
           ← Games
         </button>
-        <div className="bs-turn-banner">{myTurn ? "Your turn — fire away" : `${opponent?.name}'s turn`}</div>
+        <div className="bs-turn-banner">
+          {isFrozenWin
+            ? `🏆 ${frozenWinner?.name ?? "Someone"} wins!`
+            : myTurn
+              ? "Your turn — fire away"
+              : `${opponent?.name}'s turn`}
+        </div>
       </div>
 
       {sunkToast && <div className="bs-sunk-toast">💥 {sunkToast}</div>}

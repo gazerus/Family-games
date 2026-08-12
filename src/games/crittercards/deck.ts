@@ -31,5 +31,9 @@ export function makeDeck(): Card[] {
 export function cardMatches(card: Card, activeColor: Color, topCard: Card): boolean {
   if (card.kind === "wild") return true;
   if (card.color === activeColor) return true;
-  return card.kind === "number" && topCard.kind === "number" && card.value === topCard.value;
+  if (card.kind === "number" && topCard.kind === "number" && card.value === topCard.value) return true;
+  // Action cards (Skip, Reverse, Draw 2) match on kind too, same color or
+  // not — a Reverse can always answer a Reverse, a Skip can always answer
+  // a Skip, regardless of color.
+  return card.kind !== "number" && card.kind === topCard.kind;
 }
