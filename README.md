@@ -13,13 +13,12 @@ accounts, no sign-up. Games so far:
 - **Connect Four** — the classic, drop discs to line up four in a row.
 - **Snakes & Ladders** — roll an animated dice, race to square 100, 10
   ladders and 10 snakes to keep it swingy. Supports 2-4 players.
-- **Dominoes** — double-six set, real hidden hands (nobody but you can see
-  your tiles), draw from the boneyard when you're stuck. Supports 2-4
-  players.
 - **Critter Cards** — a simple animal-themed color/number matching card
   game in the same spirit as UNO Junior: Skip, Reverse, Draw 2, and Wild
   cards, first to empty their hand wins, no cross-game scoring. Supports
   2-4 players.
+- **Battleship** — classic hidden-fleet naval combat, fire at coordinates
+  to sink the other person's ships first. 2 players.
 
 ## How it works, in short
 
@@ -125,7 +124,7 @@ is allowed to know (e.g. hand *sizes*, not contents). The host keeps the
 real data in a plain ref (not React state, so it never gets broadcast) and
 pushes each player's own slice of it to them with a targeted
 `send("hand", { hand }, theirSessionId)` — same idea as Draw & Guess's
-secret word, just per-player instead of per-drawer. `src/games/dominoes/`
+secret word, just per-player instead of per-drawer. `src/games/battleship/`
 and `src/games/crittercards/` are the fullest worked examples of this: both
 also show the "declare your move, host validates and applies it" pattern
 for actions the acting player can't safely resolve themselves (they don't

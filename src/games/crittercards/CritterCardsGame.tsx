@@ -23,6 +23,7 @@ interface PublicState {
   currentPlayerId: string;
   winnerId: string | null;
   drawPileCount: number;
+  hasDrawnThisTurn: boolean;
 }
 
 interface HandPayload {
@@ -128,11 +129,13 @@ export function CritterCardsGame({ onExit }: GameProps) {
       handCounts,
       currentPlayerId: current.players[nextIdx].sessionId,
       drawPileCount: drawPileRef.current.length,
+      hasDrawnThisTurn: false,
     });
   }
 
   function applyDraw(current: PublicState, senderId: string) {
     if (current.phase !== "playing" || current.currentPlayerId !== senderId) return;
+    if (current.hasDrawnThisTurn) return; // one card per turn
     const drawn = drawCards(1);
     if (drawn.length === 0) return;
     handsRef.current[senderId] = [...(handsRef.current[senderId] ?? []), ...drawn];
@@ -141,18 +144,17 @@ export function CritterCardsGame({ onExit }: GameProps) {
       ...current,
       handCounts: { ...current.handCounts, [senderId]: handsRef.current[senderId].length },
       drawPileCount: drawPileRef.current.length,
+      hasDrawnThisTurn: true,
     });
   }
 
-  function applyPass(current: PublicState, senderId: string) {
+  function applyEndTurn(current: PublicState, senderId: string) {
     if (current.phase !== "playing" || current.currentPlayerId !== senderId) return;
-    const hand = handsRef.current[senderId] ?? [];
-    const canPlay = hand.some((c) => cardMatches(c, current.activeColor, current.topCard));
-    if (canPlay) return;
+    if (!current.hasDrawnThisTurn) return; // must draw before ending turn without playing
     const n = current.players.length;
     const idx = current.players.findIndex((p) => p.sessionId === senderId);
     const nextIdx = ((idx + current.direction) % n + n) % n;
-    updateState({ ...current, currentPlayerId: current.players[nextIdx].sessionId });
+    updateState({ ...current, currentPlayerId: current.players[nextIdx].sessionId, hasDrawnThisTurn: false });
   }
 
   useEffect(() => {
@@ -174,8 +176,8 @@ export function CritterCardsGame({ onExit }: GameProps) {
         applyPlay(state, senderId, cardId, chosenColor);
       } else if (type === "draw") {
         applyDraw(state, senderId);
-      } else if (type === "pass") {
-        applyPass(state, senderId);
+      } else if (type === "end-turn") {
+        applyEndTurn(state, senderId);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -204,6 +206,7 @@ export function CritterCardsGame({ onExit }: GameProps) {
       currentPlayerId: order[0].sessionId,
       winnerId: null,
       drawPileCount: drawPileRef.current.length,
+      hasDrawnThisTurn: false,
     });
     for (const p of order) sendHand(p.sessionId, hands[p.sessionId]);
     setPendingWildCard(null);
@@ -232,10 +235,10 @@ export function CritterCardsGame({ onExit }: GameProps) {
     else send("draw", {});
   }
 
-  function handlePass() {
+  function handleEndTurn() {
     if (!state) return;
-    if (isHost) applyPass(state, localSessionId ?? "");
-    else send("pass", {});
+    if (isHost) applyEndTurn(state, localSessionId ?? "");
+    else send("end-turn", {});
   }
 
   if (!state) {
@@ -325,13 +328,18 @@ export function CritterCardsGame({ onExit }: GameProps) {
         ))}
       </div>
 
-      {myTurn && !canPlayNow && (
+      {myTurn && !canPlayNow && !state.hasDrawnThisTurn && (
         <div className="dom-actions">
           <button className="primary-button" onClick={handleDraw}>
             Draw a card
           </button>
-          <button className="link-button" onClick={handlePass}>
-            Pass
+        </div>
+      )}
+
+      {myTurn && state.hasDrawnThisTurn && (
+        <div className="dom-actions">
+          <button className="link-button" onClick={handleEndTurn}>
+            End turn
           </button>
         </div>
       )}

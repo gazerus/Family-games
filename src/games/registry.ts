@@ -3,8 +3,8 @@ import { DrawGuessGame } from "./drawguess/DrawGuessGame";
 import { MemoryMatchGame } from "./memory/MemoryMatchGame";
 import { ConnectFourGame } from "./connectfour/ConnectFourGame";
 import { SnakesLaddersGame } from "./snakesladders/SnakesLaddersGame";
-import { DominoesGame } from "./dominoes/DominoesGame";
 import { CritterCardsGame } from "./crittercards/CritterCardsGame";
+import { BattleshipGame } from "./battleship/BattleshipGame";
 
 /**
  * Add a new game by dropping its component here — no other wiring needed.
@@ -47,19 +47,19 @@ export const GAMES: GameDefinition[] = [
     component: SnakesLaddersGame,
   },
   {
-    id: "dominoes",
-    name: "Dominoes",
-    icon: "🁣",
-    description: "Match the open ends of the chain. First to empty their hand wins.",
-    minPlayers: 2,
-    component: DominoesGame,
-  },
-  {
     id: "critter-cards",
     name: "Critter Cards",
     icon: "🐾",
     description: "Match by color or number. Skip, Reverse, and Draw 2 mix things up.",
     minPlayers: 2,
     component: CritterCardsGame,
+  },
+  {
+    id: "battleship",
+    name: "Battleship",
+    icon: "🚢",
+    description: "Fire at hidden coordinates to sink the other person's fleet first.",
+    minPlayers: 2,
+    component: BattleshipGame,
   },
 ];

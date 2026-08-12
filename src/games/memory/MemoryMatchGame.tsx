@@ -5,7 +5,7 @@ import { pickSymbols, shuffle } from "./symbols";
 import { colorForPlayerIndex } from "../playerColors";
 
 const GAME_ID = "memory-match";
-const PAIR_COUNT = 6;
+const PAIR_COUNT = 10;
 const RESOLVE_PAUSE_MS = 1000;
 
 interface Card {

@@ -1,8 +1,8 @@
 import {
   forwardRef,
   useCallback,
-  useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
 } from "react";
 
@@ -79,20 +79,49 @@ export const DrawCanvas = forwardRef<
   }));
 
   // Keep the backing bitmap sized to the element's rendered box for crisp lines.
-  useEffect(() => {
+  // Mobile browsers resize the visual viewport mid-gesture (address bar
+  // collapsing on first touch, layout still settling right after the game
+  // screen mounts), which fires this more than once. Resizing a canvas's
+  // width/height always wipes its bitmap, so a resize landing mid-stroke
+  // used to erase what was already drawn and leave the touch coordinates
+  // mapped against a stale, undersized bitmap until the next observer tick
+  // — that's what showed up as gaps/dashes and a "dead" bottom half. Guard
+  // against no-op resizes and carry the existing drawing across real ones.
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
       const ratio = window.devicePixelRatio || 1;
-      canvas.width = Math.round(rect.width * ratio);
-      canvas.height = Math.round(rect.height * ratio);
+      const newWidth = Math.max(1, Math.round(rect.width * ratio));
+      const newHeight = Math.max(1, Math.round(rect.height * ratio));
+      if (newWidth === canvas.width && newHeight === canvas.height) return;
+
+      let snapshot: HTMLCanvasElement | null = null;
+      if (canvas.width > 0 && canvas.height > 0) {
+        snapshot = document.createElement("canvas");
+        snapshot.width = canvas.width;
+        snapshot.height = canvas.height;
+        snapshot.getContext("2d")?.drawImage(canvas, 0, 0);
+      }
+
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+
+      if (snapshot) {
+        getCtx()?.drawImage(snapshot, 0, 0, snapshot.width, snapshot.height, 0, 0, newWidth, newHeight);
+      }
     };
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
-    return () => observer.disconnect();
-  }, []);
+    window.visualViewport?.addEventListener("resize", resize);
+    return () => {
+      observer.disconnect();
+      window.visualViewport?.removeEventListener("resize", resize);
+    };
+  }, [getCtx]);
 
   function pointFromClient(clientX: number, clientY: number) {
     const canvas = canvasRef.current!;
