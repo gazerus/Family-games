@@ -16,9 +16,9 @@ import {
 } from "./board";
 
 const GAME_ID = "snakes-ladders";
-const HOP_MS = 300;
-const CONNECTOR_PAUSE_MS = 520;
-const CONNECTOR_SLIDE_MS = 1100;
+const HOP_MS = 600;
+const CONNECTOR_PAUSE_MS = 800;
+const CONNECTOR_SLIDE_MS = 1600;
 const DIE_ROLL_MS = 600;
 
 interface PublicPlayer {
@@ -328,7 +328,7 @@ export function SnakesLaddersGame({ onExit }: GameProps) {
             const square = animPositions[p.sessionId] ?? 1;
             const pos = positions[square];
             if (!pos) return null;
-            const offset = (i - (state.players.length - 1) / 2) * 7;
+            const offset = (i - (state.players.length - 1) / 2) * 14;
             return (
               <div
                 key={p.sessionId}
