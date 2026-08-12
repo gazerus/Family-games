@@ -728,7 +728,7 @@
 }
 
 .mm-card--matched .mm-card-face--front {
-  background: linear-gradient(145deg, #dcfce7, #bbf7d0);
+  background: var(--mm-match-bg, linear-gradient(145deg, #dcfce7, #bbf7d0));
   animation: mm-pop 0.4s ease;
 }
 

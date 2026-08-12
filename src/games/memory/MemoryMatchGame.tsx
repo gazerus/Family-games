@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef } from "react";
+import type { CSSProperties } from "react";
 import { useHostGameState } from "../useHostGameState";
 import type { GameProps } from "../types";
 import { pickSymbols, shuffle } from "./symbols";
-import { colorForPlayerIndex } from "../playerColors";
+import { colorForPlayerIndex, paleGradientForPlayerIndex } from "../playerColors";
 
 const GAME_ID = "memory-match";
 const PAIR_COUNT = 10;
@@ -12,6 +13,7 @@ interface Card {
   id: number;
   symbol: string;
   matched: boolean;
+  matchedBy: string | null;
 }
 
 interface PublicPlayer {
@@ -67,7 +69,9 @@ export function MemoryMatchGame({ onExit }: GameProps) {
     resolveTimeoutRef.current = setTimeout(() => {
       if (isMatch) {
         const cards = current.cards.map((c) =>
-          c.id === aId || c.id === bId ? { ...c, matched: true } : c
+          c.id === aId || c.id === bId
+            ? { ...c, matched: true, matchedBy: current.currentPlayerId }
+            : c
         );
         const scores = {
           ...current.scores,
@@ -97,6 +101,7 @@ export function MemoryMatchGame({ onExit }: GameProps) {
       id,
       symbol,
       matched: false,
+      matchedBy: null,
     }));
     startAsHost({
       phase: "playing",
@@ -209,10 +214,18 @@ export function MemoryMatchGame({ onExit }: GameProps) {
       <div className="mm-grid">
         {state.cards.map((card) => {
           const faceUp = card.matched || state.flippedIds.includes(card.id);
+          const matchedByIndex = card.matchedBy
+            ? state.players.findIndex((p) => p.sessionId === card.matchedBy)
+            : -1;
+          const style =
+            matchedByIndex >= 0
+              ? ({ "--mm-match-bg": paleGradientForPlayerIndex(matchedByIndex) } as CSSProperties)
+              : undefined;
           return (
             <button
               key={card.id}
               className={`mm-card ${faceUp ? "mm-card--up" : ""} ${card.matched ? "mm-card--matched" : ""}`}
+              style={style}
               onClick={() => handleCardClick(card.id)}
               disabled={!myTurn || faceUp}
               aria-label={faceUp ? card.symbol : "Face-down card"}
