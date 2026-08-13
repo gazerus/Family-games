@@ -1464,3 +1464,201 @@
   gap: 16px;
   padding: 4px 10px;
 }
+
+/* Maze Race */
+
+.maze-race-game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.mz-turn-banner {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.mz-difficulty-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+  margin: 4px 0 8px;
+}
+
+.mz-difficulty-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-h);
+}
+
+.mz-difficulty-option span {
+  font-weight: 400;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.mz-difficulty-option--picked {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.mz-countdown {
+  gap: 4px;
+}
+
+.mz-countdown-number {
+  font-size: 96px;
+  font-weight: 800;
+  color: var(--accent-strong);
+  line-height: 1;
+  animation: mz-pulse 1s ease infinite;
+}
+
+@keyframes mz-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+  40% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+}
+
+.mz-power-status {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.mz-panels {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.mz-panel-wrap {
+  flex: 1 1 260px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mz-panel-wrap--theirs {
+  opacity: 0.85;
+}
+
+.mz-panel-label {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.65;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mz-canvas {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  background: white;
+  display: block;
+}
+
+.mz-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(2, 52px);
+  gap: 6px;
+  justify-content: center;
+  padding: 8px 0 max(12px, env(safe-area-inset-bottom));
+}
+
+.mz-dpad-btn {
+  grid-column: 2;
+  grid-row: 1;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mz-dpad-row {
+  grid-column: 1 / span 3;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  gap: 6px;
+}
+
+.mz-dpad-row .mz-dpad-btn {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+/* Fishing Compete */
+
+.fishing-game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.fc-mode-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.fc-mode-picked {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.fc-pond-wrap {
+  flex: 1;
+  padding: 8px 12px max(12px, env(safe-area-inset-bottom));
+  min-height: 260px;
+}
+
+.fc-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  display: block;
+  touch-action: none;
+  cursor: pointer;
+}

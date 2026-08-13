@@ -19,6 +19,12 @@ accounts, no sign-up. Games so far:
   2-4 players.
 - **Battleship** — classic hidden-fleet naval combat, fire at coordinates
   to sink the other person's ships first. 2 players.
+- **Maze Race** — each player picks their own difficulty and races their own
+  maze to the exit, side by side with a live view of the other person's
+  progress. Grab ⚡ speed boosts and 👁️ path reveals along the way. 2 players.
+- **Fishing Compete** — each player fishes their own pond, tuned to their own
+  difficulty; race to a score threshold or see who catches the most in 60
+  seconds. Rare gold fish are worth more. 2 players.
 
 ## How it works, in short
 

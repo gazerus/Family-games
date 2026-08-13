@@ -5,6 +5,8 @@ import { ConnectFourGame } from "./connectfour/ConnectFourGame";
 import { SnakesLaddersGame } from "./snakesladders/SnakesLaddersGame";
 import { CritterCardsGame } from "./crittercards/CritterCardsGame";
 import { BattleshipGame } from "./battleship/BattleshipGame";
+import { MazeRaceGame } from "./mazerace/MazeRaceGame";
+import { FishingGame } from "./fishing/FishingGame";
 
 /**
  * Add a new game by dropping its component here — no other wiring needed.
@@ -61,5 +63,21 @@ export const GAMES: GameDefinition[] = [
     description: "Fire at hidden coordinates to sink the other person's fleet first.",
     minPlayers: 2,
     component: BattleshipGame,
+  },
+  {
+    id: "maze-race",
+    name: "Maze Race",
+    icon: "🧩",
+    description: "Race through your own maze to the exit — grab power-ups along the way.",
+    minPlayers: 2,
+    component: MazeRaceGame,
+  },
+  {
+    id: "fishing-compete",
+    name: "Fishing Compete",
+    icon: "🎣",
+    description: "Catch fish in your own pond — most points wins.",
+    minPlayers: 2,
+    component: FishingGame,
   },
 ];
