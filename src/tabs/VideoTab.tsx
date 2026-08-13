@@ -1,4 +1,5 @@
 import { useCall } from "../call/CallContext";
+import { ExitDoorIcon } from "../components/ExitDoorIcon";
 import { VideoTile } from "../components/VideoTile";
 
 export function VideoTab() {
@@ -74,7 +75,7 @@ export function VideoTab() {
           onClick={leave}
           aria-label="Leave the family room"
         >
-          📞
+          <ExitDoorIcon />
         </button>
       </div>
     </div>

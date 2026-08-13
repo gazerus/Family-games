@@ -4,8 +4,8 @@ Video chat with the family, plus games you can add as you go — like Messenger'
 video calls, but the games are ours.
 
 Everyone opens the same link on their phone, picks a name, and lands in one
-shared family room with three tabs: **Video**, **Chat**, and **Games**. No
-accounts, no sign-up. Games so far:
+shared family room with two tabs: **Video** and **Games**. No accounts, no
+sign-up. Games so far:
 
 - **Draw & Guess** — Pictionary-style: take turns drawing a secret word while
   everyone else guesses.
@@ -19,21 +19,22 @@ accounts, no sign-up. Games so far:
   2-4 players.
 - **Battleship** — classic hidden-fleet naval combat, fire at coordinates
   to sink the other person's ships first. 2 players.
-- **Maze Race** — each player picks their own difficulty and races their own
-  maze to the exit, side by side with a live view of the other person's
-  progress. Grab ⚡ speed boosts and 👁️ path reveals along the way. 2 players.
-- **Fishing Compete** — each player fishes their own pond, tuned to their own
-  difficulty; race to a score threshold or see who catches the most in 60
-  seconds. Rare gold fish are worth more. 2 players.
+- **Maze Race** — race your own maze to the exit, side by side with a live
+  view of the other person's progress. Whoever picks a difficulty first sets
+  it for both mazes. Grab ⚡ speed boosts and 👁️ path reveals along the way.
+  2 players.
+- **Fishing Compete** — fish your own pond; whoever picks first sets the
+  shared difficulty and catch target (25, 50, 100 fish, or a 60-second
+  sprint) for both ponds. Rare gold fish are worth more. 2 players.
 
 ## How it works, in short
 
 - **Video/audio** rides [Daily.co](https://daily.co)'s free WebRTC service —
   no server of our own to run or pay for.
-- **Chat and games ride the same connection**, using Daily's peer-to-peer data
-  channel (`sendAppMessage`) instead of a separate backend. That's also why
-  chat/games only reach people currently in the room — there's no server
-  storing messages for later delivery (see "What this doesn't do" below).
+- **Games ride the same connection** as the call, using Daily's peer-to-peer
+  data channel (`sendAppMessage`) instead of a separate backend. That's also
+  why game moves only reach people currently in the room — there's no server
+  storing anything for later delivery (see "What this doesn't do" below).
 - **The app itself is a static site** — a Vite + React PWA, installable to a
   phone's home screen, deployed for free on GitHub Pages.
 
@@ -186,14 +187,14 @@ settings.
 ## What this doesn't do (yet)
 
 - **No push notifications.** If the app isn't open, nobody's notified you
-  joined the room or sent a message — you just won't see it until you open
-  the app. Genuinely "nice to have" push alerts (e.g. "Dad joined the family
-  room") would need a small always-on relay; the reception-monitor sibling
-  project in this GitHub account uses [ntfy.sh](https://ntfy.sh) for exactly
-  that, free and serverless, and the same approach would drop in here if it's
-  ever worth doing.
-- **No chat/game history.** Nothing is stored anywhere — close the app and
-  it's gone. Fine for a casual family room; would need a real backend (or
+  joined the room — you just won't see it until you open the app. Genuinely
+  "nice to have" push alerts (e.g. "Dad joined the family room") would need a
+  small always-on relay; the reception-monitor sibling project in this GitHub
+  account uses [ntfy.sh](https://ntfy.sh) for exactly that, free and
+  serverless, and the same approach would drop in here if it's ever worth
+  doing.
+- **No game history.** Nothing is stored anywhere — close the app and it's
+  gone. Fine for a casual family room; would need a real backend (or
   something like Firebase) to change.
 - **No automatic host handover.** In every game, whoever taps "Start game"
   runs that game's turn order and scoring for everyone else — everyone

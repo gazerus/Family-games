@@ -1,8 +1,7 @@
-export type TabId = "video" | "chat" | "games";
+export type TabId = "video" | "games";
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: "video", label: "Video", icon: "🎥" },
-  { id: "chat", label: "Chat", icon: "💬" },
   { id: "games", label: "Games", icon: "🎮" },
 ];
 

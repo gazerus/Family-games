@@ -5,7 +5,6 @@ import { loadProfile, saveProfile } from "./setup/storage";
 import { TabBar } from "./components/TabBar";
 import type { TabId } from "./components/TabBar";
 import { VideoTab } from "./tabs/VideoTab";
-import { ChatTab } from "./tabs/ChatTab";
 import { GamesTab } from "./tabs/GamesTab";
 import type { FamilyProfile } from "./types";
 import "./App.css";
@@ -18,7 +17,6 @@ function AppShell({ profile }: { profile: FamilyProfile }) {
       <div className="app-shell">
         <main className="app-main">
           {activeTab === "video" && <VideoTab />}
-          {activeTab === "chat" && <ChatTab />}
           {activeTab === "games" && <GamesTab />}
         </main>
         <TabBar active={activeTab} onChange={setActiveTab} />

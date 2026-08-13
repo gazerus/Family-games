@@ -331,6 +331,7 @@
 
 .control-button--leave {
   background: var(--danger);
+  color: white;
 }
 
 /* Video strip (mini row shown above games). Fixed instead of in-flow: tall
@@ -367,86 +368,6 @@
 
 .video-tile--compact .video-tile__label {
   font-size: 10px;
-}
-
-/* Chat tab */
-
-.chat-tab {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.chat-empty {
-  text-align: center;
-  opacity: 0.6;
-  font-size: 14px;
-  margin-top: 24px;
-}
-
-.chat-bubble {
-  max-width: 78%;
-  padding: 9px 13px;
-  border-radius: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  align-self: flex-start;
-  font-size: 15px;
-}
-
-.chat-bubble--local {
-  align-self: flex-end;
-  background: var(--accent);
-  color: white;
-  border: none;
-}
-
-.chat-bubble__sender {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.6;
-  margin-bottom: 2px;
-}
-
-.chat-input-row {
-  display: flex;
-  gap: 8px;
-  padding: 10px;
-  border-top: 1px solid var(--border);
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
-}
-
-.chat-input-row input {
-  flex: 1;
-  padding: 11px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-h);
-}
-
-.chat-input-row button {
-  padding: 0 18px;
-  border-radius: 999px;
-  border: none;
-  background: var(--accent);
-  color: white;
-  font-weight: 600;
-}
-
-.chat-input-row button:disabled {
-  opacity: 0.4;
 }
 
 /* Games tab */
