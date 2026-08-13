@@ -19,6 +19,9 @@ import {
 
 const GAME_ID = "maze-race";
 const COUNTDOWN_MS = 3000;
+// Safety cap: if a "maze-ready" message never arrives (e.g. the other
+// player's tab died mid-countdown), start anyway rather than hang forever.
+const MAX_READY_WAIT_MS = 5000;
 const WIN_FREEZE_MS = 2200;
 const NORMAL_MOVE_MS = 140;
 const FAST_MOVE_MS = 60;
@@ -44,6 +47,7 @@ interface PublicState {
   seed: number;
   difficultyByPlayer: Record<string, Difficulty | null>;
   countdownStartedAt: number | null;
+  readyIds: string[];
   winnerId: string | null;
 }
 
@@ -105,11 +109,40 @@ export function MazeRaceGame({ onExit }: GameProps) {
     if (current.phase !== "difficulty") return;
     const difficultyByPlayer = Object.fromEntries(current.players.map((p) => [p.sessionId, difficulty]));
     const countdownStartedAt = Date.now();
-    const next: PublicState = { ...current, difficultyByPlayer, phase: "countdown", countdownStartedAt };
+    const next: PublicState = {
+      ...current,
+      difficultyByPlayer,
+      phase: "countdown",
+      countdownStartedAt,
+      readyIds: [],
+    };
     updateState(next);
-    setTimeout(() => {
-      updateState({ ...next, phase: "racing" });
-    }, COUNTDOWN_MS);
+    scheduleRaceStart(next.seed, countdownStartedAt);
+  }
+
+  // Don't flip into "racing" on a blind timer alone — wait until every
+  // player has confirmed (via "maze-ready") that they've actually built the
+  // maze for this seed, so a slow/reconnecting client is never left racing
+  // against a stale board it hasn't loaded yet. Bounded by MAX_READY_WAIT_MS
+  // so a missing confirmation can't hang the game forever.
+  function scheduleRaceStart(seed: number, countdownStartedAt: number) {
+    const check = () => {
+      const current = stateRef.current;
+      if (!current || current.phase !== "countdown" || current.seed !== seed) return;
+      const elapsed = Date.now() - countdownStartedAt;
+      const allReady = current.players.every((p) => current.readyIds.includes(p.sessionId));
+      if (elapsed >= COUNTDOWN_MS && (allReady || elapsed >= COUNTDOWN_MS + MAX_READY_WAIT_MS)) {
+        updateState({ ...current, phase: "racing" });
+        return;
+      }
+      setTimeout(check, 150);
+    };
+    setTimeout(check, COUNTDOWN_MS);
+  }
+
+  function applyMazeReady(current: PublicState, senderId: string) {
+    if (current.phase !== "countdown" || current.readyIds.includes(senderId)) return;
+    updateState({ ...current, readyIds: [...current.readyIds, senderId] });
   }
 
   function applyFinish(current: PublicState, senderId: string) {
@@ -128,6 +161,10 @@ export function MazeRaceGame({ onExit }: GameProps) {
       if (!isHost || !state) return;
       if (type === "set-difficulty") {
         applySetDifficulty(state, senderId, (payload as DifficultyPayload).difficulty);
+        return;
+      }
+      if (type === "maze-ready") {
+        applyMazeReady(state, senderId);
         return;
       }
       if (type === "finished") {
@@ -187,9 +224,13 @@ export function MazeRaceGame({ onExit }: GameProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.seed, opponentDifficulty]);
 
-  function startGame() {
-    const order = presentPlayers.slice(0, 2).map((p) => ({ sessionId: p.sessionId, name: p.userName }));
-    if (order.length < 2) return;
+  // Resets everything scoped to a single race (position, trail, collected
+  // power-ups, difficulty pick). Called by whoever taps "Start"/"Play again"
+  // *and* by every other player's own client once it notices a new seed —
+  // otherwise the non-initiating player keeps stale state (a leftover
+  // `finishedRef` from the race they just won, an old `myPos`, ...) from the
+  // previous race, which looked like their maze being "stuck" and unmovable.
+  function resetLocalRaceState() {
     setMyDifficulty(null);
     setMyPos({ row: 0, col: 0 });
     setOpponentPos({ row: 0, col: 0 });
@@ -200,6 +241,30 @@ export function MazeRaceGame({ onExit }: GameProps) {
     setCountdownTick(3);
     collectedRef.current = new Set();
     finishedRef.current = false;
+  }
+
+  const seenSeedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!state || seenSeedRef.current === state.seed) return;
+    seenSeedRef.current = state.seed;
+    resetLocalRaceState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.seed]);
+
+  // Tell the host once my own maze for this race is actually built, so the
+  // countdown->racing transition can wait for both players instead of
+  // assuming everyone's ready the instant the timer runs out.
+  useEffect(() => {
+    if (!state || state.phase !== "countdown" || !myAssets) return;
+    if (isHost) applyMazeReady(state, localSessionId ?? "");
+    else send("maze-ready", {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.phase, state?.seed, myAssets, isHost]);
+
+  function startGame() {
+    const order = presentPlayers.slice(0, 2).map((p) => ({ sessionId: p.sessionId, name: p.userName }));
+    if (order.length < 2) return;
+    resetLocalRaceState();
     startAsHost({
       phase: "difficulty",
       hostId: localSessionId ?? "",
@@ -207,6 +272,7 @@ export function MazeRaceGame({ onExit }: GameProps) {
       seed: Math.floor(Math.random() * 2 ** 31),
       difficultyByPlayer: Object.fromEntries(order.map((p) => [p.sessionId, null])),
       countdownStartedAt: null,
+      readyIds: [],
       winnerId: null,
     });
   }
@@ -344,10 +410,15 @@ export function MazeRaceGame({ onExit }: GameProps) {
   }
 
   if (state.phase === "countdown") {
+    const allReady = state.players.every((p) => state.readyIds.includes(p.sessionId));
     return (
       <div className="dg-lobby mz-countdown">
         <div className="mz-countdown-number">{countdownTick}</div>
-        <p className="dg-hint">Get ready to race!</p>
+        <p className="dg-hint">
+          {allReady || countdownTick > 1
+            ? "Get ready to race!"
+            : `Waiting for ${opponent?.name ?? "the other player"} to finish loading their maze…`}
+        </p>
       </div>
     );
   }

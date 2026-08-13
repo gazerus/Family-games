@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
 import { useHostGameState } from "../useHostGameState";
 import type { GameProps } from "../types";
 import { pickRandomWord } from "./words";
@@ -7,14 +6,21 @@ import { DrawCanvas } from "./DrawCanvas";
 import type { DrawCanvasHandle, StrokeBatch } from "./DrawCanvas";
 
 const GAME_ID = "draw-guess";
-const ROUND_MS = 60_000;
-const REVEAL_PAUSE_MS = 4_500;
+const PICTURES_PER_PLAYER = 5;
+const REVEAL_PAUSE_MS = 2500;
 
 type Phase = "drawing" | "round-end" | "game-over";
+type Outcome = "solved" | "skipped";
 
 interface PublicPlayer {
   sessionId: string;
   name: string;
+}
+
+interface DrawerStats {
+  solved: number;
+  skipped: number;
+  totalMs: number;
 }
 
 interface PublicState {
@@ -22,35 +28,33 @@ interface PublicState {
   hostId: string;
   hostName: string;
   players: PublicPlayer[];
-  scores: Record<string, number>;
+  stats: Record<string, DrawerStats>;
   currentDrawerId: string | null;
   wordLength: number | null;
-  roundEndsAt: number | null;
+  roundStartedAt: number | null;
   revealedWord: string | null;
-  lastCorrectGuesserId: string | null;
+  lastOutcome: Outcome | null;
+  lastElapsedMs: number | null;
   round: number;
+  totalRounds: number;
 }
 
 interface WordPayload {
   word: string;
 }
 
-interface GuessPayload {
-  text: string;
-}
-
-type DrawGuessPayload =
-  | PublicState
-  | WordPayload
-  | GuessPayload
-  | StrokeBatch
-  | Record<string, never>;
+type DrawGuessPayload = PublicState | WordPayload | StrokeBatch | Record<string, never>;
 
 interface FeedEntry {
   id: string;
-  kind: "guess" | "system";
   text: string;
-  sender?: string;
+}
+
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.round(ms / 1000);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return m > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${s}s`;
 }
 
 export function DrawGuessGame({ onExit }: GameProps) {
@@ -68,24 +72,15 @@ export function DrawGuessGame({ onExit }: GameProps) {
 
   const [localWord, setLocalWord] = useState<string | null>(null);
   const [feed, setFeed] = useState<FeedEntry[]>([]);
-  const [guessDraft, setGuessDraft] = useState("");
-  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const canvasRef = useRef<DrawCanvasHandle>(null);
   const hostWordRef = useRef<string | null>(null);
   const usedWordsRef = useRef(new Set<string>());
-  const roundTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
 
-  function pushFeed(entry: Omit<FeedEntry, "id">) {
-    setFeed((prev) => [...prev, { ...entry, id: `${Date.now()}-${Math.random()}` }]);
-  }
-
-  function clearRoundTimeout() {
-    if (roundTimeoutRef.current) {
-      clearTimeout(roundTimeoutRef.current);
-      roundTimeoutRef.current = null;
-    }
+  function pushFeed(text: string) {
+    setFeed((prev) => [...prev, { text, id: `${Date.now()}-${Math.random()}` }]);
   }
 
   function assignWord(drawerId: string, state: PublicState) {
@@ -116,72 +111,81 @@ export function DrawGuessGame({ onExit }: GameProps) {
       hostId: localSessionId ?? "",
       hostName: localName,
       players: order,
-      scores: Object.fromEntries(order.map((p) => [p.sessionId, 0])),
+      stats: Object.fromEntries(order.map((p) => [p.sessionId, { solved: 0, skipped: 0, totalMs: 0 }])),
       currentDrawerId: order[0].sessionId,
       wordLength: null,
-      roundEndsAt: Date.now() + ROUND_MS,
+      roundStartedAt: Date.now(),
       revealedWord: null,
-      lastCorrectGuesserId: null,
+      lastOutcome: null,
+      lastElapsedMs: null,
       round: 1,
+      totalRounds: order.length * PICTURES_PER_PLAYER,
     };
     assignWord(order[0].sessionId, state);
     startAsHost(state);
-    clearRoundTimeout();
-    roundTimeoutRef.current = setTimeout(() => endRound(state, "timeout"), ROUND_MS);
   }
 
-  function endRound(state: PublicState, reason: "timeout" | "correct", guesserId?: string) {
-    clearRoundTimeout();
+  function endRound(state: PublicState, outcome: Outcome) {
+    const elapsed = Date.now() - (state.roundStartedAt ?? Date.now());
+    const drawerId = state.currentDrawerId;
+    const prevStats = (drawerId && state.stats[drawerId]) || { solved: 0, skipped: 0, totalMs: 0 };
+    const nextStats: DrawerStats =
+      outcome === "solved"
+        ? { ...prevStats, solved: prevStats.solved + 1, totalMs: prevStats.totalMs + elapsed }
+        : { ...prevStats, skipped: prevStats.skipped + 1 };
     const next: PublicState = {
       ...state,
       phase: "round-end",
       revealedWord: hostWordRef.current,
-      roundEndsAt: null,
-      lastCorrectGuesserId: reason === "correct" ? guesserId ?? null : null,
+      roundStartedAt: null,
+      lastOutcome: outcome,
+      lastElapsedMs: outcome === "solved" ? elapsed : null,
+      stats: drawerId ? { ...state.stats, [drawerId]: nextStats } : state.stats,
     };
     updateState(next);
     setTimeout(() => advanceRound(next), REVEAL_PAUSE_MS);
   }
 
   function advanceRound(prev: PublicState) {
-    const nextRoundIndex = prev.round; // players are 0-indexed, round is 1-indexed
-    if (nextRoundIndex >= prev.players.length) {
+    const nextRoundIndex = prev.round; // round is 1-indexed, so this is the next round's 0-index
+    if (nextRoundIndex >= prev.totalRounds) {
       updateState({ ...prev, phase: "game-over", currentDrawerId: null, revealedWord: null });
       return;
     }
-    const drawer = prev.players[nextRoundIndex];
+    const drawer = prev.players[nextRoundIndex % prev.players.length];
     const state: PublicState = {
       ...prev,
       phase: "drawing",
       currentDrawerId: drawer.sessionId,
       wordLength: null,
-      roundEndsAt: Date.now() + ROUND_MS,
+      roundStartedAt: Date.now(),
       revealedWord: null,
-      lastCorrectGuesserId: null,
+      lastOutcome: null,
+      lastElapsedMs: null,
       round: nextRoundIndex + 1,
     };
     setLocalWord(null);
     assignWord(drawer.sessionId, state);
     updateState(state);
-    clearRoundTimeout();
-    roundTimeoutRef.current = setTimeout(() => endRound(state, "timeout"), ROUND_MS);
   }
 
   function playAgain() {
     startGame();
   }
 
-  function evaluateGuess(current: PublicState, guesserId: string, text: string) {
-    if (current.phase !== "drawing" || !hostWordRef.current) return;
-    const correct = text.trim().toLowerCase() === hostWordRef.current.toLowerCase();
-    if (!correct) return;
-    const scores = { ...current.scores, [guesserId]: (current.scores[guesserId] ?? 0) + 1 };
-    endRound({ ...current, scores }, "correct", guesserId);
+  function applyGotIt(current: PublicState, drawerId: string) {
+    if (current.phase !== "drawing" || current.currentDrawerId !== drawerId) return;
+    endRound(current, "solved");
+  }
+
+  function applySkip(current: PublicState, drawerId: string) {
+    if (current.phase !== "drawing" || current.currentDrawerId !== drawerId) return;
+    endRound(current, "skipped");
   }
 
   // Wire up incoming messages the shared host-state hook doesn't already handle.
   useEffect(() => {
-    return onMessage((type, payload, senderId, sender) => {
+    return onMessage((type, payload, senderId) => {
       if (type === "word") {
         setLocalWord((payload as WordPayload).word);
         return;
@@ -202,10 +206,13 @@ export function DrawGuessGame({ onExit }: GameProps) {
         canvasRef.current?.clear();
         return;
       }
-      if (type === "guess") {
-        const text = (payload as GuessPayload).text;
-        pushFeed({ kind: "guess", text, sender });
-        if (isHost && publicState) evaluateGuess(publicState, senderId, text);
+      if (!isHost || !publicState) return;
+      if (type === "got-it") {
+        applyGotIt(publicState, senderId);
+        return;
+      }
+      if (type === "skip") {
+        applySkip(publicState, senderId);
         return;
       }
     });
@@ -219,7 +226,7 @@ export function DrawGuessGame({ onExit }: GameProps) {
     }
   }, [publicState?.round, publicState?.phase]);
 
-  // Announce round-end / game-over into the feed.
+  // Announce round-end / game-over into the log.
   const lastAnnouncedPhaseKey = useRef<string | null>(null);
   useEffect(() => {
     if (!publicState) return;
@@ -227,41 +234,34 @@ export function DrawGuessGame({ onExit }: GameProps) {
     if (lastAnnouncedPhaseKey.current === key) return;
     lastAnnouncedPhaseKey.current = key;
     if (publicState.phase === "round-end" && publicState.revealedWord) {
-      const guesser = publicState.players.find(
-        (p) => p.sessionId === publicState.lastCorrectGuesserId
-      );
-      pushFeed({
-        kind: "system",
-        text: guesser
-          ? `${guesser.name} got it! The word was "${publicState.revealedWord}".`
-          : `Time's up! The word was "${publicState.revealedWord}".`,
-      });
+      if (publicState.lastOutcome === "solved") {
+        pushFeed(
+          `Got it in ${formatDuration(publicState.lastElapsedMs ?? 0)}! The word was "${publicState.revealedWord}".`
+        );
+      } else {
+        pushFeed(`Skipped — the word was "${publicState.revealedWord}".`);
+      }
     }
     if (publicState.phase === "game-over") {
-      pushFeed({ kind: "system", text: "Game over! Final scores below." });
+      pushFeed("Game over! Final scores below.");
     }
   }, [publicState]);
 
-  // Countdown display, ticks locally for everyone.
+  // Stopwatch counting up — there's no time limit, this is just a live readout.
   useEffect(() => {
-    if (!publicState?.roundEndsAt) {
-      setSecondsLeft(0);
+    if (!publicState?.roundStartedAt) {
+      setElapsedSeconds(0);
       return;
     }
-    const tick = () => {
-      const left = Math.max(0, Math.round((publicState.roundEndsAt! - Date.now()) / 1000));
-      setSecondsLeft(left);
-    };
+    const tick = () => setElapsedSeconds(Math.max(0, Math.round((Date.now() - publicState.roundStartedAt!) / 1000)));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [publicState?.roundEndsAt]);
+  }, [publicState?.roundStartedAt]);
 
   useEffect(() => {
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight });
   }, [feed]);
-
-  useEffect(() => clearRoundTimeout, []);
 
   const isDrawer =
     publicState?.phase === "drawing" && publicState.currentDrawerId === localSessionId;
@@ -280,31 +280,37 @@ export function DrawGuessGame({ onExit }: GameProps) {
     send("clear", {});
   }
 
-  function handleGuessSubmit(e: FormEvent) {
-    e.preventDefault();
-    const text = guessDraft.trim();
-    if (!text) return;
-    pushFeed({ kind: "guess", text, sender: localName });
-    // Broadcasts don't loop back to their own sender, so if I'm the host my
-    // own guess would otherwise never reach the scoring check below — apply
-    // it directly here, same as every other game does for the host's moves.
-    if (isHost && publicState) evaluateGuess(publicState, localSessionId ?? "", text);
-    send("guess", { text });
-    setGuessDraft("");
+  function handleGotIt() {
+    if (!publicState || !isDrawer) return;
+    // Broadcasts don't loop back to their own sender, so apply directly if
+    // I'm the host — same pattern as every other host-authoritative action.
+    if (isHost) applyGotIt(publicState, localSessionId ?? "");
+    else send("got-it", {});
   }
 
-  const scoreboard = useMemo(() => {
+  function handleSkip() {
+    if (!publicState || !isDrawer) return;
+    if (isHost) applySkip(publicState, localSessionId ?? "");
+    else send("skip", {});
+  }
+
+  const finalStats = useMemo(() => {
     if (!publicState) return [];
     return publicState.players
-      .map((p) => ({ ...p, score: publicState.scores[p.sessionId] ?? 0 }))
-      .sort((a, b) => b.score - a.score);
+      .map((p) => {
+        const s = publicState.stats[p.sessionId] ?? { solved: 0, skipped: 0, totalMs: 0 };
+        return { ...p, ...s, avgMs: s.solved > 0 ? s.totalMs / s.solved : null };
+      })
+      .sort((a, b) => (a.skipped !== b.skipped ? a.skipped - b.skipped : a.totalMs - b.totalMs));
   }, [publicState]);
 
   if (!publicState) {
     return (
       <div className="dg-lobby">
         <h2>🎨 Draw &amp; Guess</h2>
-        <p>Take turns drawing a secret word while everyone else guesses.</p>
+        <p>
+          {`Charades with a pen: draw a secret word while everyone else calls out guesses out loud. ${PICTURES_PER_PLAYER} pictures each, no time limit — the fastest drawer to get their pictures guessed wins.`}
+        </p>
         {presentPlayers.length < 2 ? (
           <p className="dg-hint">Need at least 2 people to have this game open.</p>
         ) : (
@@ -327,14 +333,21 @@ export function DrawGuessGame({ onExit }: GameProps) {
   }
 
   if (publicState.phase === "game-over") {
+    const [first, second] = finalStats;
+    const tie = !!second && first.skipped === second.skipped && first.totalMs === second.totalMs;
     return (
       <div className="dg-lobby">
-        <h2>🏆 Game over!</h2>
+        <h2>{tie ? "🤝 It's a tie!" : `🏆 ${first?.name ?? "Someone"} was the fastest drawer!`}</h2>
+        <p className="dg-hint">Ranked by fewest skips, then fastest total guess time.</p>
         <ol className="dg-scoreboard">
-          {scoreboard.map((p) => (
-            <li key={p.sessionId}>
+          {finalStats.map((p) => (
+            <li key={p.sessionId} className="dg-scoreboard-row">
               <span>{p.name}</span>
-              <span>{p.score} pt{p.score === 1 ? "" : "s"}</span>
+              <span>
+                {p.solved}/{PICTURES_PER_PLAYER} solved
+                {p.skipped > 0 ? `, ${p.skipped} skipped` : ""} · {formatDuration(p.totalMs)} total
+                {p.avgMs != null ? ` (avg ${formatDuration(p.avgMs)})` : ""}
+              </span>
             </li>
           ))}
         </ol>
@@ -368,8 +381,13 @@ export function DrawGuessGame({ onExit }: GameProps) {
             </span>
           )}
         </div>
-        <span className="dg-timer">{publicState.phase === "drawing" ? `${secondsLeft}s` : ""}</span>
+        <span className="dg-timer">{publicState.phase === "drawing" ? formatDuration(elapsedSeconds * 1000) : ""}</span>
       </div>
+
+      <p className="dg-round-hint">
+        Picture {publicState.round} of {publicState.totalRounds}
+        {!isDrawer && publicState.phase === "drawing" ? " — call out your guess!" : ""}
+      </p>
 
       <div className="dg-canvas-wrap">
         <DrawCanvas ref={canvasRef} interactive={isDrawer} onLocalBatch={handleLocalStroke} />
@@ -380,41 +398,34 @@ export function DrawGuessGame({ onExit }: GameProps) {
         )}
       </div>
 
+      {isDrawer && publicState.phase === "drawing" && (
+        <div className="dg-drawer-controls">
+          <button className="link-button dg-skip-button" onClick={handleSkip}>
+            🙈 Skip
+          </button>
+          <button className="primary-button dg-gotit-button" onClick={handleGotIt}>
+            ✅ Got it!
+          </button>
+        </div>
+      )}
+
       <div className="dg-guess-feed" ref={feedRef}>
         {feed.map((entry) => (
-          <div key={entry.id} className={`dg-feed-entry dg-feed-entry--${entry.kind}`}>
-            {entry.kind === "guess" ? (
-              <>
-                <strong>{entry.sender}:</strong> {entry.text}
-              </>
-            ) : (
-              entry.text
-            )}
+          <div key={entry.id} className="dg-feed-entry dg-feed-entry--system">
+            {entry.text}
           </div>
         ))}
       </div>
 
-      {!isDrawer && (
-        <form className="dg-guess-form" onSubmit={handleGuessSubmit}>
-          <input
-            type="text"
-            value={guessDraft}
-            onChange={(e) => setGuessDraft(e.target.value)}
-            placeholder="Type your guess…"
-            disabled={publicState.phase !== "drawing"}
-          />
-          <button type="submit" disabled={publicState.phase !== "drawing" || !guessDraft.trim()}>
-            Guess
-          </button>
-        </form>
-      )}
-
       <div className="dg-mini-scoreboard">
-        {scoreboard.map((p) => (
-          <span key={p.sessionId} className="dg-mini-score">
-            {p.name}: {p.score}
-          </span>
-        ))}
+        {publicState.players.map((p) => {
+          const s = publicState.stats[p.sessionId];
+          return (
+            <span key={p.sessionId} className="dg-mini-score">
+              {p.name}: {s?.solved ?? 0}/{PICTURES_PER_PLAYER}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

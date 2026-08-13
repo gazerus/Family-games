@@ -20,6 +20,21 @@
   min-height: 0;
 }
 
+/* Both the Video and Games panes stay mounted at all times (see App.tsx) —
+   this just controls which one is visible, so a game in progress keeps
+   running (network listeners, timers, local state) while looking at the
+   Video tab instead of being torn down and rebuilt. */
+.app-tab-pane {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.app-tab-pane--active {
+  display: flex;
+}
+
 .settings-corner-button {
   position: fixed;
   top: max(10px, env(safe-area-inset-top));
@@ -39,6 +54,15 @@
 
 .invite-corner-button {
   right: 54px;
+}
+
+.exit-game-corner-button {
+  left: 10px;
+  right: auto;
+  background: var(--danger);
+  color: white;
+  border: none;
+  opacity: 0.9;
 }
 
 .invite-toast {
@@ -68,6 +92,25 @@
 }
 
 /* Tab bar */
+
+.tab-bar__resume {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+}
+
+.tab-bar__resume-icon {
+  font-size: 16px;
+}
 
 .tab-bar {
   display: flex;
@@ -488,6 +531,22 @@
   font-size: 15px;
 }
 
+.dg-scoreboard-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.dg-scoreboard-row span:first-child {
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.dg-scoreboard-row span:last-child {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
 .draw-guess-game {
   flex: 1;
   display: flex;
@@ -524,8 +583,16 @@
   font-variant-numeric: tabular-nums;
   font-size: 13px;
   opacity: 0.7;
-  width: 32px;
+  width: 40px;
   text-align: right;
+}
+
+.dg-round-hint {
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.65;
+  margin: 0;
+  padding: 2px 0 0;
 }
 
 .dg-canvas-wrap {
@@ -595,33 +662,20 @@
   font-style: italic;
 }
 
-.dg-guess-form {
+.dg-drawer-controls {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   padding: 8px 10px;
   padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
-.dg-guess-form input {
+.dg-skip-button {
+  flex: 0 0 auto;
+}
+
+.dg-gotit-button {
   flex: 1;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-h);
-}
-
-.dg-guess-form button {
-  padding: 0 18px;
-  border-radius: 999px;
-  border: none;
-  background: var(--accent);
-  color: white;
-  font-weight: 600;
-}
-
-.dg-guess-form button:disabled {
-  opacity: 0.4;
+  background: var(--success);
 }
 
 .dg-mini-scoreboard {

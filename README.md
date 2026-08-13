@@ -7,8 +7,9 @@ Everyone opens the same link on their phone, picks a name, and lands in one
 shared family room with two tabs: **Video** and **Games**. No accounts, no
 sign-up. Games so far:
 
-- **Draw & Guess** — Pictionary-style: take turns drawing a secret word while
-  everyone else guesses.
+- **Draw & Guess** — charades with a pen: take turns drawing a secret word
+  while everyone else calls out guesses out loud, no time limit. The drawer
+  taps Got it!/Skip; whoever's 5 pictures get guessed fastest overall wins.
 - **Memory Match** — flip cards to find matching pairs, most pairs wins.
 - **Connect Four** — the classic, drop discs to line up four in a row.
 - **Snakes & Ladders** — roll an animated dice, race to square 100, 10

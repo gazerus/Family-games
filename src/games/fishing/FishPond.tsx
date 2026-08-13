@@ -147,7 +147,8 @@ export function FishPond({
     for (const f of fishRef.current) {
       ctx.save();
       ctx.translate(f.x, f.y);
-      if (f.vx < 0) ctx.scale(-1, 1);
+      // Fish emoji face left by default, so mirror only when swimming right.
+      if (f.vx > 0) ctx.scale(-1, 1);
       ctx.font = `${f.size}px sans-serif`;
       ctx.fillText(f.kind === "gold" ? "🐠" : "🐟", 0, 0);
       ctx.restore();
