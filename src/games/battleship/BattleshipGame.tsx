@@ -4,12 +4,15 @@ import type { GameProps } from "../types";
 import {
   BOARD_SIZE,
   SHIP_SIZES,
-  canPlace,
   cellKey,
+  clampEditable,
   countShipsAfloat,
+  editableCells,
+  overlappingCells,
   placeFleet,
-  remainingSizes,
-  shipCells,
+  rotateEditable,
+  shipsToEditable,
+  type EditableShip,
   type Ship,
 } from "./fleet";
 import { ShipHull, shipName } from "./ShipHull";
@@ -92,13 +95,21 @@ export function BattleshipGame({ onExit }: GameProps) {
   } = useHostGameState<PublicState, BattleshipPayload>(GAME_ID, "game-over");
 
   const [myFleet, setMyFleet] = useState<Ship[]>([]);
-  const [placedShips, setPlacedShips] = useState<Ship[]>([]);
-  const [orientation, setOrientation] = useState<"h" | "v">("h");
-  const [placeError, setPlaceError] = useState(false);
+  const [placedShips, setPlacedShips] = useState<EditableShip[]>([]);
   const [sunkToast, setSunkToast] = useState<string | null>(null);
   const [revealWinner, setRevealWinner] = useState(false);
   const fleetsRef = useRef<Record<string, Ship[]>>({});
   const processedSunkId = useRef<string | null>(null);
+  const placementBoardRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<{
+    id: number;
+    startRow: number;
+    startCol: number;
+    startClientX: number;
+    startClientY: number;
+    cellSize: number;
+    moved: boolean;
+  } | null>(null);
 
   function sendFleet(playerId: string, ships: Ship[]) {
     if (playerId === localSessionId) setMyFleet(ships);
@@ -228,8 +239,7 @@ export function BattleshipGame({ onExit }: GameProps) {
 
     fleetsRef.current = {};
     setMyFleet([]);
-    setPlacedShips([]);
-    setOrientation("h");
+    setPlacedShips(shipsToEditable(placeFleet()));
     setSunkToast(null);
     processedSunkId.current = null;
     startAsHost({
@@ -245,35 +255,61 @@ export function BattleshipGame({ onExit }: GameProps) {
     });
   }
 
-  function handlePlacementTap(row: number, col: number) {
-    const hitShip = placedShips.find((ship) => ship.some((c) => c.row === row && c.col === col));
-    if (hitShip) {
-      setPlacedShips((prev) => prev.filter((s) => s !== hitShip));
-      setPlaceError(false);
-      return;
+  // Drag to move a ship (constrained to the grid, free to overlap other
+  // ships while dragging); tap without moving to rotate it in place.
+  function handleShipPointerDown(e: React.PointerEvent<HTMLDivElement>, es: EditableShip) {
+    e.stopPropagation();
+    (e.target as Element).setPointerCapture(e.pointerId);
+    const boardRect = placementBoardRef.current?.getBoundingClientRect();
+    if (!boardRect) return;
+    dragStateRef.current = {
+      id: es.id,
+      startRow: es.row,
+      startCol: es.col,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      cellSize: boardRect.width / BOARD_SIZE,
+      moved: false,
+    };
+  }
+
+  function handleShipPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragStateRef.current;
+    if (!drag) return;
+    const dx = e.clientX - drag.startClientX;
+    const dy = e.clientY - drag.startClientY;
+    if (Math.hypot(dx, dy) > 6) drag.moved = true;
+    const deltaCols = Math.round(dx / drag.cellSize);
+    const deltaRows = Math.round(dy / drag.cellSize);
+    setPlacedShips((prev) =>
+      prev.map((s) =>
+        s.id === drag.id
+          ? clampEditable({ ...s, row: drag.startRow + deltaRows, col: drag.startCol + deltaCols })
+          : s
+      )
+    );
+  }
+
+  function handleShipPointerUp(_e: React.PointerEvent<HTMLDivElement>, es: EditableShip) {
+    const drag = dragStateRef.current;
+    dragStateRef.current = null;
+    if (!drag) return;
+    if (!drag.moved) {
+      setPlacedShips((prev) => prev.map((s) => (s.id === es.id ? rotateEditable(s) : s)));
     }
-    const nextSize = remainingSizes(placedShips)[0];
-    if (!nextSize) return;
-    const cells = shipCells(row, col, nextSize, orientation === "h");
-    if (!cells || !canPlace(placedShips, cells)) {
-      setPlaceError(true);
-      setTimeout(() => setPlaceError(false), 900);
-      return;
-    }
-    setPlacedShips((prev) => [...prev, cells]);
-    setPlaceError(false);
   }
 
   function handleRandomize() {
-    setPlacedShips(placeFleet());
-    setPlaceError(false);
+    setPlacedShips(shipsToEditable(placeFleet()));
   }
 
   function handleReady() {
     if (!state || placedShips.length < SHIP_SIZES.length) return;
-    setMyFleet(placedShips);
-    if (isHost) applyPlaceFleet(state, localSessionId ?? "", placedShips);
-    else send("place-fleet", { ships: placedShips });
+    if (overlappingCells(placedShips).size > 0) return;
+    const ships = placedShips.map(editableCells);
+    setMyFleet(ships);
+    if (isHost) applyPlaceFleet(state, localSessionId ?? "", ships);
+    else send("place-fleet", { ships });
   }
 
   function handleFire(row: number, col: number) {
@@ -335,10 +371,10 @@ export function BattleshipGame({ onExit }: GameProps) {
       );
     }
 
-    const nextSize = remainingSizes(placedShips)[0];
     const cells = Array.from({ length: BOARD_SIZE }, (_, row) =>
       Array.from({ length: BOARD_SIZE }, (_, col) => ({ row, col }))
     );
+    const overlaps = overlappingCells(placedShips);
 
     return (
       <div className="battleship-game">
@@ -350,31 +386,47 @@ export function BattleshipGame({ onExit }: GameProps) {
         </div>
 
         <p className="bs-place-hint">
-          {nextSize
-            ? placeError
-              ? "Can't place it there — try another spot."
-              : `Tap a square to place your ${shipName(nextSize)} (${nextSize} squares). Tap a placed ship to pick it up again.`
-            : "All ships placed!"}
+          {overlaps.size > 0
+            ? "Ships are overlapping — drag them apart before you're ready."
+            : "Drag a ship to move it, tap a ship to rotate it."}
         </p>
 
         <div className="bs-boards">
           <div className="bs-board-block">
-            <div className="bs-grid-stack">
+            <div className="bs-grid-stack" ref={placementBoardRef}>
               <div className="bs-grid">
                 {cells.map((row) =>
-                  row.map(({ row: r, col: c }) => (
-                    <button
-                      key={`${r}-${c}`}
-                      className="bs-cell"
-                      onClick={() => handlePlacementTap(r, c)}
-                      aria-label={`Row ${r + 1}, column ${c + 1}`}
-                    />
-                  ))
+                  row.map(({ row: r, col: c }) => <div key={`${r}-${c}`} className="bs-cell" />)
                 )}
               </div>
+              <div className="bs-overlaps">
+                {[...overlaps].map((key) => {
+                  const [r, c] = key.split(",").map(Number);
+                  return (
+                    <div
+                      key={key}
+                      className="bs-overlap-cell"
+                      style={{
+                        left: `${(c / BOARD_SIZE) * 100}%`,
+                        top: `${(r / BOARD_SIZE) * 100}%`,
+                        width: `${(1 / BOARD_SIZE) * 100}%`,
+                        height: `${(1 / BOARD_SIZE) * 100}%`,
+                      }}
+                    />
+                  );
+                })}
+              </div>
               <div className="bs-hulls">
-                {placedShips.map((ship, i) => (
-                  <ShipHull key={i} ship={ship} />
+                {placedShips.map((ship) => (
+                  <ShipHull
+                    key={ship.id}
+                    ship={editableCells(ship)}
+                    draggable
+                    onPointerDown={(e) => handleShipPointerDown(e, ship)}
+                    onPointerMove={handleShipPointerMove}
+                    onPointerUp={(e) => handleShipPointerUp(e, ship)}
+                    onPointerCancel={(e) => handleShipPointerUp(e, ship)}
+                  />
                 ))}
               </div>
             </div>
@@ -382,9 +434,6 @@ export function BattleshipGame({ onExit }: GameProps) {
         </div>
 
         <div className="bs-placement-controls">
-          <button className="link-button" onClick={() => setOrientation((o) => (o === "h" ? "v" : "h"))}>
-            {orientation === "h" ? "↔ Horizontal" : "↕ Vertical"} (tap to rotate)
-          </button>
           <button className="link-button" onClick={handleRandomize}>
             🎲 Randomize
           </button>
@@ -394,7 +443,7 @@ export function BattleshipGame({ onExit }: GameProps) {
           <button
             className="primary-button"
             onClick={handleReady}
-            disabled={placedShips.length < SHIP_SIZES.length}
+            disabled={placedShips.length < SHIP_SIZES.length || overlaps.size > 0}
           >
             Ready!
           </button>

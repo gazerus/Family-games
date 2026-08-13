@@ -34,7 +34,21 @@ function point(l: number, t: number, horizontal: boolean): string {
   return horizontal ? `${l},${t}` : `${t},${l}`;
 }
 
-export function ShipHull({ ship }: { ship: Ship }) {
+export function ShipHull({
+  ship,
+  draggable = false,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+}: {
+  ship: Ship;
+  draggable?: boolean;
+  onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerCancel?: (e: React.PointerEvent<HTMLDivElement>) => void;
+}) {
   const gradId = useId();
   const rows = ship.map((c) => c.row);
   const cols = ship.map((c) => c.col);
@@ -92,9 +106,13 @@ export function ShipHull({ ship }: { ship: Ship }) {
 
   return (
     <div
-      className={`bs-hull ${horizontal ? "bs-hull--h" : "bs-hull--v"}`}
+      className={`bs-hull ${horizontal ? "bs-hull--h" : "bs-hull--v"} ${draggable ? "bs-hull--draggable" : ""}`}
       style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%` }}
       title={shipName(size)}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
     >
       <svg viewBox={viewBox} preserveAspectRatio="none" className="bs-hull-svg">
         <defs>

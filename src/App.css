@@ -1457,6 +1457,42 @@
   overflow: visible;
 }
 
+/* During placement, hulls opt back into pointer events (their container is
+   pointer-events:none so it never blocks firing during the playing phase)
+   so they can be dragged to move or tapped to rotate. */
+.bs-hull--draggable {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.bs-hull--draggable:active {
+  cursor: grabbing;
+}
+
+.bs-overlaps {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bs-overlap-cell {
+  position: absolute;
+  background: rgba(239, 68, 68, 0.55);
+  border-radius: 3px;
+  animation: bs-overlap-pulse 1s ease-in-out infinite;
+}
+
+@keyframes bs-overlap-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
 .bs-marker {
   position: absolute;
   display: flex;
