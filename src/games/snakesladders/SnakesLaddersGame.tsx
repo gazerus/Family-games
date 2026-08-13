@@ -9,8 +9,9 @@ import {
   LADDER_MAP,
   SNAKES,
   SNAKE_MAP,
+  SNAKE_STYLES,
   squareToRowCol,
-  wavySnakePath,
+  snakeBody,
   ladderGeometry,
   type Point,
 } from "./board";
@@ -333,12 +334,55 @@ export function SnakesLaddersGame({ onExit }: GameProps) {
                   </g>
                 );
               })}
-              {SNAKES.map(([from, to]) => {
+              {SNAKES.map(([from, to], i) => {
                 const p1 = positions[from];
                 const p2 = positions[to];
                 if (!p1 || !p2) return null;
+                const { bodyPath, headCenter, headForward } = snakeBody(p1, p2);
+                const style = SNAKE_STYLES[i % SNAKE_STYLES.length];
+                const perpX = -headForward.y;
+                const perpY = headForward.x;
+                const eye1 = {
+                  x: headCenter.x - headForward.x * 6 + perpX * 5,
+                  y: headCenter.y - headForward.y * 6 + perpY * 5,
+                };
+                const eye2 = {
+                  x: headCenter.x - headForward.x * 6 - perpX * 5,
+                  y: headCenter.y - headForward.y * 6 - perpY * 5,
+                };
+                const clipId = `snake-clip-${from}`;
                 return (
-                  <path key={`snake-${from}`} d={wavySnakePath(p1, p2)} className="sl-snake-path" fill="none" />
+                  <g key={`snake-${from}`}>
+                    {style.stripeColor && (
+                      <clipPath id={clipId}>
+                        <path d={bodyPath} />
+                      </clipPath>
+                    )}
+                    <path d={bodyPath} fill={style.fill} stroke="rgba(0,0,0,0.25)" strokeWidth={1} />
+                    {style.stripeColor && (
+                      <g clipPath={`url(#${clipId})`}>
+                        {Array.from({ length: 8 }, (_, si) => {
+                          const t = si / 7;
+                          const bx = p1.x + (p2.x - p1.x) * t;
+                          const by = p1.y + (p2.y - p1.y) * t;
+                          return (
+                            <line
+                              key={si}
+                              x1={bx - 14}
+                              y1={by - 14}
+                              x2={bx + 14}
+                              y2={by + 14}
+                              stroke={style.stripeColor}
+                              strokeWidth={5}
+                            />
+                          );
+                        })}
+                      </g>
+                    )}
+                    <circle cx={headCenter.x} cy={headCenter.y} r={11} fill={style.fill} />
+                    <circle cx={eye1.x} cy={eye1.y} r={2} fill="#000" />
+                    <circle cx={eye2.x} cy={eye2.y} r={2} fill="#000" />
+                  </g>
                 );
               })}
             </svg>

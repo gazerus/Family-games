@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { ANIMAL_EMOJI, type Card, type Color } from "./deck";
 
 const COLOR_HEX: Record<Color, string> = {
@@ -38,10 +39,14 @@ export function CritterCard({
   const background = card.kind === "wild" ? WILD_BG : COLOR_HEX[card.color!];
   const ring = card.kind === "wild" && activeColor ? COLOR_HEX[activeColor] : undefined;
   const Tag = onClick ? "button" : "div";
+  const style = {
+    background,
+    "--cc-ring": ring ? `0 0 0 9px ${ring}` : "0 0 0 0 transparent",
+  } as CSSProperties;
   return (
     <Tag
       className={`critter-card ${dimmed ? "critter-card--dimmed" : ""}`}
-      style={{ background, boxShadow: ring ? `0 0 0 3px ${ring}, var(--shadow)` : undefined }}
+      style={style}
       onClick={onClick}
       disabled={onClick ? dimmed : undefined}
     >

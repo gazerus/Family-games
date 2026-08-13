@@ -333,15 +333,29 @@
   background: var(--danger);
 }
 
-/* Video strip (mini row shown above chat/games) */
-
+/* Video strip (mini row shown above games). Fixed instead of in-flow: tall
+   game screens (Maze Race's dual panels, Battleship's dual boards, ...)
+   push .app-shell taller than the viewport, and an in-flow strip scrolled
+   away with the rest of the page along with it. Pinned below the settings/
+   invite corner buttons (top:10-56px, z-index:20) so it never fights them
+   for space. .games-tab reserves matching top padding below (see
+   VIDEO_STRIP_OFFSET/VIDEO_STRIP_HEIGHT comment there) so content never
+   starts out hidden underneath it. */
 .video-strip {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 50px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 640px;
+  z-index: 15;
   display: flex;
   gap: 6px;
   padding: 8px;
   overflow-x: auto;
   border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+  background: var(--bg);
+  box-shadow: var(--shadow);
 }
 
 .video-tile--compact {
@@ -437,11 +451,17 @@
 
 /* Games tab */
 
+/* VIDEO_STRIP_HEIGHT: the video strip is `position: fixed` (see .video-strip
+   above) starting 50px + safe-area-inset-top down, ~101px tall (84px
+   compact tile + 16px vertical padding + 1px border) — this padding-top
+   reserves exactly that much space so game content never renders starting
+   out hidden underneath the floating strip. Keep the two in sync. */
 .games-tab {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 151px);
 }
 
 .game-grid {
@@ -977,12 +997,6 @@
   stroke-linecap: round;
 }
 
-.sl-snake-path {
-  stroke: #16a34a;
-  stroke-width: 8;
-  stroke-linecap: round;
-  opacity: 0.9;
-}
 
 .sl-token {
   position: absolute;
@@ -1202,20 +1216,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 110px;
+  min-height: 130px;
 }
 
 .critter-card {
   flex-shrink: 0;
-  width: 68px;
-  height: 96px;
-  border-radius: 10px;
+  width: 82px;
+  height: 115px;
+  border-radius: 12px;
   border: none;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow);
+  /* Inset white ring so the card reads as an illustrated card rather than
+     a flat color swatch; --cc-ring lets a wild card's chosen color add a
+     second, thicker ring on top without the two fighting over the
+     box-shadow property (inline style only sets the variable). */
+  --cc-ring: 0 0 0 0 transparent;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.65), var(--cc-ring), var(--shadow);
   color: white;
 }
 
@@ -1228,16 +1247,16 @@
 }
 
 .critter-card__symbol {
-  font-size: 30px;
+  font-size: 36px;
   font-weight: 800;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .critter-card__animal {
   position: absolute;
-  bottom: 4px;
-  right: 5px;
-  font-size: 13px;
+  bottom: 5px;
+  right: 6px;
+  font-size: 16px;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
 }
 

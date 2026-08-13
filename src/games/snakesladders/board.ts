@@ -71,6 +71,90 @@ export function wavySnakePath(p1: Point, p2: Point, amplitude = 14, segments = 1
   return d;
 }
 
+export interface SnakeStyle {
+  fill: string;
+  stripeColor?: string;
+}
+
+// Distinct look per snake so all 10 on the board read as separate
+// creatures rather than identical squiggles. Indexed 1:1 against SNAKES.
+export const SNAKE_STYLES: SnakeStyle[] = [
+  { fill: "#16a34a" }, // green
+  { fill: "#92400e" }, // brown
+  { fill: "#1f2937", stripeColor: "#f97316" }, // black, orange stripes
+  { fill: "#0891b2" }, // teal
+  { fill: "#7c3aed" }, // purple
+  { fill: "#b91c1c" }, // red
+  { fill: "#3f6212", stripeColor: "#fde047" }, // olive, yellow stripes
+  { fill: "#0f172a" }, // near-black
+  { fill: "#ca8a04" }, // mustard
+  { fill: "#831843" }, // maroon
+];
+
+export interface SnakeBody {
+  bodyPath: string;
+  headCenter: Point;
+  headForward: Point; // unit vector pointing from head into the body
+}
+
+// A snake's "head" is at the higher square (p1) — where it bites the
+// player — tapering to a "tail" at the lower square (p2), where they slide
+// out. Built as a filled ribbon (not a uniform stroked line) so the width
+// can actually taper, with each cross-section's width and normal computed
+// from the wavy centerline itself so the ribbon hugs its own curve.
+export function snakeBody(p1: Point, p2: Point, amplitude = 12, segments = 22): SnakeBody {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const ux = -dy;
+  const uy = dx;
+  const baseLen = Math.hypot(ux, uy) || 1;
+  const bpx = ux / baseLen;
+  const bpy = uy / baseLen;
+
+  const center: Point[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const bx = p1.x + dx * t;
+    const by = p1.y + dy * t;
+    const taper = Math.sin(t * Math.PI);
+    const offset = Math.sin(t * Math.PI * 3.2) * amplitude * taper;
+    center.push({ x: bx + bpx * offset, y: by + bpy * offset });
+  }
+
+  const headWidth = 20;
+  const tailWidth = 4;
+  const left: Point[] = [];
+  const right: Point[] = [];
+  for (let i = 0; i < center.length; i++) {
+    const t = i / (center.length - 1);
+    const width = headWidth + (tailWidth - headWidth) * t;
+    const prev = center[Math.max(0, i - 1)];
+    const next = center[Math.min(center.length - 1, i + 1)];
+    const tdx = next.x - prev.x;
+    const tdy = next.y - prev.y;
+    const tlen = Math.hypot(tdx, tdy) || 1;
+    const npx = -tdy / tlen;
+    const npy = tdx / tlen;
+    const c = center[i];
+    left.push({ x: c.x + npx * (width / 2), y: c.y + npy * (width / 2) });
+    right.push({ x: c.x - npx * (width / 2), y: c.y - npy * (width / 2) });
+  }
+
+  let bodyPath = `M ${left[0].x} ${left[0].y} `;
+  for (let i = 1; i < left.length; i++) bodyPath += `L ${left[i].x} ${left[i].y} `;
+  for (let i = right.length - 1; i >= 0; i--) bodyPath += `L ${right[i].x} ${right[i].y} `;
+  bodyPath += "Z";
+
+  const headForwardRaw = { x: center[1].x - center[0].x, y: center[1].y - center[0].y };
+  const flen = Math.hypot(headForwardRaw.x, headForwardRaw.y) || 1;
+
+  return {
+    bodyPath,
+    headCenter: center[0],
+    headForward: { x: headForwardRaw.x / flen, y: headForwardRaw.y / flen },
+  };
+}
+
 export interface LadderGeometry {
   rail1: [Point, Point];
   rail2: [Point, Point];
