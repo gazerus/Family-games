@@ -1340,10 +1340,15 @@
 }
 
 /* Wraps the grid plus its ship/marker overlays so they line up with
-   percentage-based positioning instead of measuring pixels. */
+   percentage-based positioning instead of measuring pixels. Square in its
+   own right (not just inherited from .bs-grid's aspect-ratio below) so a
+   browser that mishandles aspect-ratio on a grid display can't throw off
+   the percentage math the hull/marker overlays depend on to stay 1:1 with
+   the cells underneath. */
 .bs-grid-stack {
   position: relative;
   width: 100%;
+  aspect-ratio: 1 / 1;
 }
 
 .bs-grid {
@@ -1405,17 +1410,14 @@
 .bs-hull {
   position: absolute;
   box-sizing: border-box;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }
 
-.bs-hull--h {
-  padding: 14% 4%;
-  clip-path: polygon(0% 15%, 0% 85%, 82% 85%, 100% 50%, 82% 15%);
-}
-
-.bs-hull--v {
-  padding: 4% 14%;
-  clip-path: polygon(15% 0%, 85% 0%, 85% 82%, 50% 100%, 15% 82%);
+.bs-hull-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
 }
 
 .bs-marker {
