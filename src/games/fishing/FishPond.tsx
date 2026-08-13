@@ -18,8 +18,14 @@ interface Splash {
 }
 
 const SPLASH_MS = 500;
-const LANES = 4;
 const TOP_BAND = 0.22; // fraction of height reserved for the wave strip
+
+// Easy fish are large (up to 180px) — packing them into 4 lanes the way
+// medium/difficult's much smaller fish work would just overlap into a
+// jumble, so easy gets fewer, taller lanes instead.
+function laneCountFor(difficulty: Difficulty): number {
+  return difficulty === "easy" ? 2 : 4;
+}
 
 export function FishPond({
   difficulty,
@@ -74,9 +80,10 @@ export function FishPond({
     const size = cfg.sizeRange[0] + Math.random() * (cfg.sizeRange[1] - cfg.sizeRange[0]);
     const speed = cfg.speedRange[0] + Math.random() * (cfg.speedRange[1] - cfg.speedRange[0]);
     const fromLeft = Math.random() < 0.5;
-    const lane = Math.floor(Math.random() * LANES);
+    const lanes = laneCountFor(difficulty);
+    const lane = Math.floor(Math.random() * lanes);
     const bandTop = h * TOP_BAND;
-    const y = bandTop + ((lane + 0.5) / LANES) * (h - bandTop);
+    const y = bandTop + ((lane + 0.5) / lanes) * (h - bandTop);
     fishRef.current.push({
       id: nextIdRef.current++,
       kind,

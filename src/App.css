@@ -1705,23 +1705,10 @@
   min-height: 0;
 }
 
-.fc-mode-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.fc-mode-picked {
-  color: var(--accent-strong);
-  font-weight: 700;
-}
-
 .fc-pond-wrap {
   flex: 1;
   padding: 8px 12px max(12px, env(safe-area-inset-bottom));
-  min-height: 260px;
+  min-height: 320px;
 }
 
 .fc-canvas {

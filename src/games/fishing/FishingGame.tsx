@@ -19,7 +19,7 @@ interface PublicPlayer {
 }
 
 interface PublicState {
-  phase: "difficulty" | "countdown" | "playing" | "game-over";
+  phase: "difficulty" | "target" | "countdown" | "playing" | "game-over";
   hostId: string;
   players: PublicPlayer[];
   mode: Mode;
@@ -40,7 +40,11 @@ interface DifficultyPayload {
   difficulty: Difficulty;
 }
 
-type FishingPayload = PublicState | CatchPayload | DifficultyPayload | Record<string, never>;
+interface TargetPayload {
+  target: number | "timer";
+}
+
+type FishingPayload = PublicState | CatchPayload | DifficultyPayload | TargetPayload | Record<string, never>;
 
 export function FishingGame({ onExit }: GameProps) {
   const {
@@ -55,7 +59,6 @@ export function FishingGame({ onExit }: GameProps) {
   } = useHostGameState<PublicState, FishingPayload>(GAME_ID, "game-over");
 
   const [myDifficulty, setMyDifficulty] = useState<Difficulty | null>(null);
-  const [hostMode, setHostMode] = useState<Mode>("score");
   const [countdownTick, setCountdownTick] = useState(3);
   const [secondsLeft, setSecondsLeft] = useState(DEFAULT_TIMER_SECONDS);
   const [revealWinner, setRevealWinner] = useState(false);
@@ -65,16 +68,21 @@ export function FishingGame({ onExit }: GameProps) {
     stateRef.current = state;
   }, [state]);
 
-  function applySetDifficulty(current: PublicState, senderId: string, difficulty: Difficulty) {
+  // Either player picking is enough — whoever picks first sets the
+  // difficulty (and therefore fish size/speed) for both of them.
+  function applySetDifficulty(current: PublicState, _senderId: string, difficulty: Difficulty) {
     if (current.phase !== "difficulty") return;
-    const difficultyByPlayer = { ...current.difficultyByPlayer, [senderId]: difficulty };
-    const bothPicked = current.players.every((p) => difficultyByPlayer[p.sessionId]);
-    if (!bothPicked) {
-      updateState({ ...current, difficultyByPlayer });
-      return;
-    }
+    const difficultyByPlayer = Object.fromEntries(current.players.map((p) => [p.sessionId, difficulty]));
+    updateState({ ...current, difficultyByPlayer, phase: "target" });
+  }
+
+  // Same "first pick wins for both" pattern for the catch target.
+  function applySetTarget(current: PublicState, _senderId: string, target: number | "timer") {
+    if (current.phase !== "target") return;
+    const mode: Mode = target === "timer" ? "timer" : "score";
+    const scoreThreshold = typeof target === "number" ? target : current.scoreThreshold;
     const countdownStartedAt = Date.now();
-    const next: PublicState = { ...current, difficultyByPlayer, phase: "countdown", countdownStartedAt };
+    const next: PublicState = { ...current, mode, scoreThreshold, phase: "countdown", countdownStartedAt };
     updateState(next);
     setTimeout(() => {
       const playing: PublicState = { ...next, phase: "playing", playStartedAt: Date.now() };
@@ -112,6 +120,10 @@ export function FishingGame({ onExit }: GameProps) {
       if (!isHost || !state) return;
       if (type === "set-difficulty") {
         applySetDifficulty(state, senderId, (payload as DifficultyPayload).difficulty);
+        return;
+      }
+      if (type === "set-target") {
+        applySetTarget(state, senderId, (payload as TargetPayload).target);
         return;
       }
       if (type === "catch") {
@@ -164,7 +176,7 @@ export function FishingGame({ onExit }: GameProps) {
       phase: "difficulty",
       hostId: localSessionId ?? "",
       players: order,
-      mode: hostMode,
+      mode: "score",
       scoreThreshold: DEFAULT_SCORE_THRESHOLD,
       timerSeconds: DEFAULT_TIMER_SECONDS,
       difficultyByPlayer: Object.fromEntries(order.map((p) => [p.sessionId, null])),
@@ -180,6 +192,12 @@ export function FishingGame({ onExit }: GameProps) {
     if (!state) return;
     if (isHost) applySetDifficulty(state, localSessionId ?? "", d);
     else send("set-difficulty", { difficulty: d });
+  }
+
+  function handleChooseTarget(target: number | "timer") {
+    if (!state) return;
+    if (isHost) applySetTarget(state, localSessionId ?? "", target);
+    else send("set-target", { target });
   }
 
   function handleCatch(kind: FishKind) {
@@ -201,23 +219,9 @@ export function FishingGame({ onExit }: GameProps) {
         {presentPlayers.length < 2 ? (
           <p className="dg-hint">Need at least 2 people to have this game open.</p>
         ) : (
-          <>
-            <p className="dg-hint">{presentPlayers.length} people ready.</p>
-            <div className="fc-mode-picker">
-              <button
-                className={`link-button ${hostMode === "score" ? "fc-mode-picked" : ""}`}
-                onClick={() => setHostMode("score")}
-              >
-                First to {DEFAULT_SCORE_THRESHOLD} points
-              </button>
-              <button
-                className={`link-button ${hostMode === "timer" ? "fc-mode-picked" : ""}`}
-                onClick={() => setHostMode("timer")}
-              >
-                Most catches in {DEFAULT_TIMER_SECONDS}s
-              </button>
-            </div>
-          </>
+          <p className="dg-hint">
+            {presentPlayers.length} people ready. Whoever starts runs the first game.
+          </p>
         )}
         <button className="primary-button" onClick={startGame} disabled={presentPlayers.length < 2}>
           Start game
@@ -245,28 +249,54 @@ export function FishingGame({ onExit }: GameProps) {
   }
 
   if (state.phase === "difficulty") {
-    const amPicked = !!state.difficultyByPlayer[localSessionId ?? ""];
     return (
       <div className="dg-lobby">
         <h2>🎣 Fishing Compete</h2>
-        <p>Pick your own difficulty — each person fishes their own pond.</p>
+        <p>Pick a difficulty to start — whoever picks first sets it for both of you.</p>
         <div className="mz-difficulty-picker">
-          <button
-            className={`mz-difficulty-option ${myDifficultyResolved === "easy" ? "mz-difficulty-option--picked" : ""}`}
-            onClick={() => handleChooseDifficulty("easy")}
-          >
+          <button className="mz-difficulty-option" onClick={() => handleChooseDifficulty("easy")}>
             🐣 Easy
             <span>Big, slow fish</span>
           </button>
-          <button
-            className={`mz-difficulty-option ${myDifficultyResolved === "standard" ? "mz-difficulty-option--picked" : ""}`}
-            onClick={() => handleChooseDifficulty("standard")}
-          >
-            🧭 Standard
-            <span>Quick, small fish</span>
+          <button className="mz-difficulty-option" onClick={() => handleChooseDifficulty("medium")}>
+            🧭 Medium
+            <span>Smaller, quicker fish</span>
+          </button>
+          <button className="mz-difficulty-option" onClick={() => handleChooseDifficulty("difficult")}>
+            🔥 Difficult
+            <span>Small and fast</span>
           </button>
         </div>
-        {amPicked && <p className="dg-hint">Waiting for {opponent?.name ?? "the other player"}…</p>}
+        <button className="link-button" onClick={onExit}>
+          Back to games
+        </button>
+      </div>
+    );
+  }
+
+  if (state.phase === "target") {
+    return (
+      <div className="dg-lobby">
+        <h2>🎣 Fishing Compete</h2>
+        <p>Pick how to play — whoever picks first sets it for both of you.</p>
+        <div className="mz-difficulty-picker">
+          <button className="mz-difficulty-option" onClick={() => handleChooseTarget(25)}>
+            🎯 25 fish
+            <span>First to 25 wins</span>
+          </button>
+          <button className="mz-difficulty-option" onClick={() => handleChooseTarget(50)}>
+            🎯 50 fish
+            <span>First to 50 wins</span>
+          </button>
+          <button className="mz-difficulty-option" onClick={() => handleChooseTarget(100)}>
+            🎯 100 fish
+            <span>First to 100 wins</span>
+          </button>
+          <button className="mz-difficulty-option" onClick={() => handleChooseTarget("timer")}>
+            ⏱️ 60 second sprint
+            <span>Most catches when time's up wins</span>
+          </button>
+        </div>
         <button className="link-button" onClick={onExit}>
           Back to games
         </button>
