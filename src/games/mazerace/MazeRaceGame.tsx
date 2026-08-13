@@ -99,14 +99,11 @@ export function MazeRaceGame({ onExit }: GameProps) {
     stateRef.current = state;
   }, [state]);
 
-  function applySetDifficulty(current: PublicState, senderId: string, difficulty: Difficulty) {
+  // Either player picking is enough to start — whoever picks first sets the
+  // difficulty (and therefore the maze) for both of them.
+  function applySetDifficulty(current: PublicState, _senderId: string, difficulty: Difficulty) {
     if (current.phase !== "difficulty") return;
-    const difficultyByPlayer = { ...current.difficultyByPlayer, [senderId]: difficulty };
-    const bothPicked = current.players.every((p) => difficultyByPlayer[p.sessionId]);
-    if (!bothPicked) {
-      updateState({ ...current, difficultyByPlayer });
-      return;
-    }
+    const difficultyByPlayer = Object.fromEntries(current.players.map((p) => [p.sessionId, difficulty]));
     const countdownStartedAt = Date.now();
     const next: PublicState = { ...current, difficultyByPlayer, phase: "countdown", countdownStartedAt };
     updateState(next);
@@ -325,28 +322,20 @@ export function MazeRaceGame({ onExit }: GameProps) {
   }
 
   if (state.phase === "difficulty") {
-    const amPicked = !!state.difficultyByPlayer[localSessionId ?? ""];
     return (
       <div className="dg-lobby">
         <h2>🧩 Maze Race</h2>
-        <p>Pick your own difficulty — everyone races their own maze, so it's still a fair race either way.</p>
+        <p>Pick a difficulty to start — whoever picks first sets it for both of you.</p>
         <div className="mz-difficulty-picker">
-          <button
-            className={`mz-difficulty-option ${myDifficultyResolved === "easy" ? "mz-difficulty-option--picked" : ""}`}
-            onClick={() => handleChooseDifficulty("easy")}
-          >
+          <button className="mz-difficulty-option" onClick={() => handleChooseDifficulty("easy")}>
             🐣 Easy
             <span>Bigger maze squares, more shortcuts</span>
           </button>
-          <button
-            className={`mz-difficulty-option ${myDifficultyResolved === "standard" ? "mz-difficulty-option--picked" : ""}`}
-            onClick={() => handleChooseDifficulty("standard")}
-          >
+          <button className="mz-difficulty-option" onClick={() => handleChooseDifficulty("standard")}>
             🧭 Standard
             <span>Bigger maze, real dead ends</span>
           </button>
         </div>
-        {amPicked && <p className="dg-hint">Waiting for {opponent?.name ?? "the other player"}…</p>}
         <button className="link-button" onClick={onExit}>
           Back to games
         </button>
@@ -403,37 +392,42 @@ export function MazeRaceGame({ onExit }: GameProps) {
           mine
           label="You"
         />
-        {opponentAssets && (
-          <MazePanel
-            maze={opponentAssets.maze}
-            powerUps={opponentAssets.powerUps}
-            collectedKeys={new Set()}
-            path={opponentAssets.path}
-            trail={opponentTrail}
-            color={colorForPlayerIndex(1)}
-            initial={(opponent?.name || "?").charAt(0).toUpperCase()}
-            targetCell={opponentPos}
-            revealActive={false}
-            mine={false}
-            label={opponent?.name ?? "Opponent"}
-          />
-        )}
       </div>
 
-      <div className="mz-dpad">
-        <button className="mz-dpad-btn mz-dpad-btn--up" onClick={() => attemptMove(NORTH)} aria-label="Up">
-          ▲
-        </button>
-        <div className="mz-dpad-row">
-          <button className="mz-dpad-btn" onClick={() => attemptMove(WEST)} aria-label="Left">
-            ◀
+      <div className="mz-bottom-row">
+        {opponentAssets && (
+          <div className="mz-opponent-mini">
+            <MazePanel
+              maze={opponentAssets.maze}
+              powerUps={opponentAssets.powerUps}
+              collectedKeys={new Set()}
+              path={opponentAssets.path}
+              trail={opponentTrail}
+              color={colorForPlayerIndex(1)}
+              initial={(opponent?.name || "?").charAt(0).toUpperCase()}
+              targetCell={opponentPos}
+              revealActive={false}
+              mine={false}
+              label={opponent?.name ?? "Opponent"}
+            />
+          </div>
+        )}
+
+        <div className="mz-dpad">
+          <button className="mz-dpad-btn mz-dpad-btn--up" onClick={() => attemptMove(NORTH)} aria-label="Up">
+            ▲
           </button>
-          <button className="mz-dpad-btn" onClick={() => attemptMove(SOUTH)} aria-label="Down">
-            ▼
-          </button>
-          <button className="mz-dpad-btn" onClick={() => attemptMove(EAST)} aria-label="Right">
-            ▶
-          </button>
+          <div className="mz-dpad-row">
+            <button className="mz-dpad-btn" onClick={() => attemptMove(WEST)} aria-label="Left">
+              ◀
+            </button>
+            <button className="mz-dpad-btn" onClick={() => attemptMove(SOUTH)} aria-label="Down">
+              ▼
+            </button>
+            <button className="mz-dpad-btn" onClick={() => attemptMove(EAST)} aria-label="Right">
+              ▶
+            </button>
+          </div>
         </div>
       </div>
     </div>

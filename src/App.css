@@ -616,11 +616,29 @@
   overflow: hidden;
   border: 1px solid var(--border);
   background: white;
+  /* display:flex turns the canvas into a flex item, so its height comes
+     from the flex algorithm's stretch behavior instead of a CSS
+     percentage-height resolving against this box. That distinction is
+     the actual bug this fixes: a <canvas> is a "replaced element" with
+     an intrinsic size (300x150, a 2:1 ratio, if never told otherwise) —
+     when a replaced element's `height: 100%` can't resolve against an
+     indefinite containing-block height, browsers fall back to deriving
+     height from width via that intrinsic ratio rather than actually
+     filling the box. That's exactly what was happening: the canvas
+     rendered at full width but only ~35% of the real height (width/2,
+     the 300x150 ratio), leaving the bottom of the visible white area
+     completely outside the actual interactive element — explains both
+     "can't draw on the whole area" and the canvas silently being a
+     different size than its wrapper.
+     Flex items don't have this problem: the flex sizing algorithm gives
+     a definite cross-size directly, so `align-items: stretch` (the flex
+     default) reliably fills the canvas to the wrapper's actual height. */
+  display: flex;
 }
 
 .draw-canvas {
+  flex: 1;
   width: 100%;
-  height: 100%;
   display: block;
   touch-action: none;
 }
@@ -1572,14 +1590,21 @@
   font-size: 12px;
 }
 
+/* Just the player's own maze — full width, the primary focus. The
+   opponent's maze moved to a small thumbnail in .mz-bottom-row (below)
+   next to the D-pad, instead of stacking as a second full-size panel,
+   since that pushed the controls off the bottom of the screen on phones. */
 .mz-panels {
   flex: 1;
   display: flex;
-  gap: 10px;
-  padding: 8px 12px;
+  padding: 6px 12px 4px;
   align-items: flex-start;
   justify-content: center;
-  flex-wrap: wrap;
+  min-height: 0;
+}
+
+.mz-panels .mz-panel-wrap {
+  max-width: 280px;
 }
 
 .mz-panel-wrap {
@@ -1611,13 +1636,38 @@
   display: block;
 }
 
+/* Bottom row: opponent's maze as a small thumbnail on the left, D-pad
+   controls to its right — keeps both mazes and the controls on screen
+   together without scrolling. */
+.mz-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 4px 12px max(10px, env(safe-area-inset-bottom));
+  flex-shrink: 0;
+}
+
+.mz-opponent-mini {
+  width: 104px;
+  flex-shrink: 0;
+}
+
+.mz-opponent-mini .mz-panel-wrap {
+  max-width: none;
+}
+
+.mz-opponent-mini .mz-panel-label {
+  font-size: 9px;
+}
+
 .mz-dpad {
   display: grid;
-  grid-template-columns: repeat(3, 52px);
-  grid-template-rows: repeat(2, 52px);
+  grid-template-columns: repeat(3, 48px);
+  grid-template-rows: repeat(2, 48px);
   gap: 6px;
   justify-content: center;
-  padding: 8px 0 max(12px, env(safe-area-inset-bottom));
+  flex-shrink: 0;
 }
 
 .mz-dpad-btn {
@@ -1637,7 +1687,7 @@
   grid-column: 1 / span 3;
   grid-row: 2;
   display: grid;
-  grid-template-columns: repeat(3, 52px);
+  grid-template-columns: repeat(3, 48px);
   gap: 6px;
 }
 

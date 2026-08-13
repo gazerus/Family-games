@@ -61,6 +61,12 @@ export const DrawCanvas = forwardRef<
   const drawingRef = useRef(false);
   const strokeIdRef = useRef<string | null>(null);
   const bufferRef = useRef<{ x: number; y: number }[]>([]);
+  // The last point actually drawn, tracked separately from bufferRef: that
+  // buffer doubles as the network send queue and gets cleared on every
+  // flush() (~every 8 points), so using its last element as "prev" meant
+  // the point right after each flush had no previous point to connect a
+  // segment to — a dropped connecting line every ~8 points, i.e. dashes.
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const sentFirstBatchRef = useRef(false);
   const moveCountRef = useRef(0);
   const [debugInfo, setDebugInfo] = useState<Record<string, string | number>>({});
@@ -179,6 +185,7 @@ export const DrawCanvas = forwardRef<
     drawingRef.current = true;
     strokeIdRef.current = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     bufferRef.current = [pt];
+    lastPointRef.current = pt;
     sentFirstBatchRef.current = false;
     moveCountRef.current = 0;
     const ctx = getCtx();
@@ -220,7 +227,7 @@ export const DrawCanvas = forwardRef<
     );
 
     for (const pt of points) {
-      const prev = bufferRef.current[bufferRef.current.length - 1];
+      const prev = lastPointRef.current;
       if (ctx && canvas && prev) {
         drawBatch(ctx, canvas.width, canvas.height, {
           strokeId: strokeIdRef.current!,
@@ -228,6 +235,7 @@ export const DrawCanvas = forwardRef<
           start: false,
         });
       }
+      lastPointRef.current = pt;
       bufferRef.current.push(pt);
     }
     moveCountRef.current += points.length;
