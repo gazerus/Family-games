@@ -125,9 +125,9 @@ export function snakeBody(p1: Point, p2: Point, amplitude = 12, segments = 22): 
   // into a long body section of consistent width, then tapering to a point
   // only over the final stretch near the tail — not a gradual taper along
   // the whole length.
-  const headWidth = 20;
-  const bodyWidth = 13;
-  const tailWidth = 3;
+  const headWidth = 10;
+  const bodyWidth = 6.5;
+  const tailWidth = 1.5;
   const neckEnd = 0.12; // head narrows to body width by this fraction
   const tailStart = 0.72; // tail taper begins this far along
   function widthAt(t: number): number {
@@ -170,6 +170,37 @@ export function snakeBody(p1: Point, p2: Point, amplitude = 12, segments = 22): 
     headCenter: center[0],
     headForward: { x: headForwardRaw.x / flen, y: headForwardRaw.y / flen },
   };
+}
+
+// A wedge-shaped head silhouette (flat-ish jaw bulge tapering to a
+// pointed snout) instead of a plain circle, so the head actually reads as
+// a snake head rather than a blob. `headForward` points from the head
+// into the body (per SnakeBody), so the snout extends the opposite way.
+export function snakeHeadPath(headCenter: Point, headForward: Point, baseHalfWidth: number): string {
+  const outX = -headForward.x;
+  const outY = -headForward.y;
+  const sideX = -headForward.y;
+  const sideY = headForward.x;
+  const len = baseHalfWidth * 3.2;
+
+  function pt(alongFrac: number, sideFrac: number): Point {
+    return {
+      x: headCenter.x + outX * len * alongFrac + sideX * baseHalfWidth * sideFrac,
+      y: headCenter.y + outY * len * alongFrac + sideY * baseHalfWidth * sideFrac,
+    };
+  }
+
+  const baseL = pt(0, 1);
+  const jawL = pt(0.35, 1.05);
+  const snoutL = pt(0.75, 0.4);
+  const tip = pt(1, 0);
+  const snoutR = pt(0.75, -0.4);
+  const jawR = pt(0.35, -1.05);
+  const baseR = pt(0, -1);
+
+  return [baseL, jawL, snoutL, tip, snoutR, jawR, baseR]
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+    .join(" ") + " Z";
 }
 
 export interface LadderGeometry {

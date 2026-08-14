@@ -12,6 +12,7 @@ import {
   SNAKE_STYLES,
   squareToRowCol,
   snakeBody,
+  snakeHeadPath,
   ladderGeometry,
   type Point,
 } from "./board";
@@ -340,15 +341,18 @@ export function SnakesLaddersGame({ onExit }: GameProps) {
                 if (!p1 || !p2) return null;
                 const { bodyPath, headCenter, headForward } = snakeBody(p1, p2);
                 const style = SNAKE_STYLES[i % SNAKE_STYLES.length];
+                const headHalfWidth = 5; // keep in sync with snakeBody's headWidth / 2
                 const perpX = -headForward.y;
                 const perpY = headForward.x;
+                // Eyes sit on the jaw bulge of the new head silhouette (see
+                // snakeHeadPath's "jaw" points), not at the head's center.
                 const eye1 = {
-                  x: headCenter.x - headForward.x * 6 + perpX * 5,
-                  y: headCenter.y - headForward.y * 6 + perpY * 5,
+                  x: headCenter.x - headForward.x * headHalfWidth * 1.1 + perpX * headHalfWidth * 0.65,
+                  y: headCenter.y - headForward.y * headHalfWidth * 1.1 + perpY * headHalfWidth * 0.65,
                 };
                 const eye2 = {
-                  x: headCenter.x - headForward.x * 6 - perpX * 5,
-                  y: headCenter.y - headForward.y * 6 - perpY * 5,
+                  x: headCenter.x - headForward.x * headHalfWidth * 1.1 - perpX * headHalfWidth * 0.65,
+                  y: headCenter.y - headForward.y * headHalfWidth * 1.1 - perpY * headHalfWidth * 0.65,
                 };
                 const clipId = `snake-clip-${from}`;
                 return (
@@ -379,9 +383,14 @@ export function SnakesLaddersGame({ onExit }: GameProps) {
                         })}
                       </g>
                     )}
-                    <circle cx={headCenter.x} cy={headCenter.y} r={11} fill={style.fill} />
-                    <circle cx={eye1.x} cy={eye1.y} r={2} fill="#000" />
-                    <circle cx={eye2.x} cy={eye2.y} r={2} fill="#000" />
+                    <path
+                      d={snakeHeadPath(headCenter, headForward, headHalfWidth)}
+                      fill={style.fill}
+                      stroke="rgba(0,0,0,0.25)"
+                      strokeWidth={1}
+                    />
+                    <circle cx={eye1.x} cy={eye1.y} r={1.3} fill="#000" />
+                    <circle cx={eye2.x} cy={eye2.y} r={1.3} fill="#000" />
                   </g>
                 );
               })}
