@@ -8,6 +8,8 @@ import { ExitDoorIcon } from "./components/ExitDoorIcon";
 import { VideoTab } from "./tabs/VideoTab";
 import { GamesTab } from "./tabs/GamesTab";
 import { GAMES } from "./games/registry";
+import { useBackGuard } from "./useBackGuard";
+import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
 import type { FamilyProfile } from "./types";
 import "./App.css";
 
@@ -62,6 +64,13 @@ function App() {
   const [inviteCopied, setInviteCopied] = useState(false);
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const activeGame = GAMES.find((g) => g.id === activeGameId) ?? null;
+  const { showExitConfirm, confirmExit, cancelExit } = useBackGuard({
+    enabled: !!profile,
+    activeGameId,
+    setActiveGameId,
+    editing,
+    setEditing,
+  });
 
   async function handleInvite() {
     if (!profile) return;
@@ -139,6 +148,7 @@ function App() {
         </button>
       )}
       {inviteCopied && <div className="invite-toast">Link copied!</div>}
+      {showExitConfirm && <ExitConfirmDialog onStay={cancelExit} onLeave={confirmExit} />}
     </div>
   );
 }

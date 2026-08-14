@@ -1898,3 +1898,42 @@
 .fd-done-button {
   margin: 8px 12px max(12px, env(safe-area-inset-bottom));
 }
+
+/* Exit confirm dialog */
+
+.exit-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 200;
+}
+
+.exit-confirm-card {
+  background: var(--bg);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 320px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.exit-confirm-card h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.exit-confirm-card p {
+  margin: 0 0 18px;
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+.exit-confirm-leave {
+  color: var(--danger);
+  margin-top: 4px;
+}
