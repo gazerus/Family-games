@@ -215,7 +215,7 @@ export function FaceDoodleGame({ onExit }: GameProps) {
           <button className="link-button dg-exit" onClick={onExit}>
             ← Games
           </button>
-          <div className="as-turn-banner">Doodle away!</div>
+          <div className="fd-turn-banner">Doodle away!</div>
         </div>
 
         <DoodleCanvas

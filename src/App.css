@@ -1747,43 +1747,14 @@
   cursor: pointer;
 }
 
-/* Arrow Slide */
+/* Face Doodle */
 
-.arrow-slide-game {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.as-turn-banner {
+.fd-turn-banner {
   flex: 1;
   text-align: center;
   font-weight: 700;
   font-size: 15px;
 }
-
-.as-board-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  min-height: 0;
-  overflow: auto;
-}
-
-.as-canvas {
-  width: 100%;
-  max-width: min(420px, 100%);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  display: block;
-  touch-action: none;
-  cursor: pointer;
-}
-
-/* Face Doodle */
 
 .face-doodle-game {
   flex: 1;
