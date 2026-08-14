@@ -374,7 +374,7 @@ export function DrawGuessGame({ onExit }: GameProps) {
         </button>
         <div className="dg-status">
           {isDrawer ? (
-            <span className="dg-word dg-word--secret">Draw: {localWord}</span>
+            <span className="dg-word dg-word--secret">{localWord}</span>
           ) : (
             <span className="dg-word">
               {drawerName ? `${drawerName} is drawing` : "Round over"} · {wordBlanks}

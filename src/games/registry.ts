@@ -7,6 +7,8 @@ import { CritterCardsGame } from "./crittercards/CritterCardsGame";
 import { BattleshipGame } from "./battleship/BattleshipGame";
 import { MazeRaceGame } from "./mazerace/MazeRaceGame";
 import { FishingGame } from "./fishing/FishingGame";
+import { ArrowSlideGame } from "./arrowslide/ArrowSlideGame";
+import { FaceDoodleGame } from "./facedoodle/FaceDoodleGame";
 
 /**
  * Add a new game by dropping its component here — no other wiring needed.
@@ -79,5 +81,21 @@ export const GAMES: GameDefinition[] = [
     description: "Catch fish in your own pond — most points wins.",
     minPlayers: 2,
     component: FishingGame,
+  },
+  {
+    id: "arrow-slide",
+    name: "Arrow Slide",
+    icon: "➡️",
+    description: "Team up to slide every piece off the board, one tap at a time.",
+    minPlayers: 2,
+    component: ArrowSlideGame,
+  },
+  {
+    id: "face-doodle",
+    name: "Face Doodle",
+    icon: "📸",
+    description: "Snap their photo, decorate it with stickers and doodles, then send it back.",
+    minPlayers: 2,
+    component: FaceDoodleGame,
   },
 ];

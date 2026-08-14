@@ -121,13 +121,30 @@ export function snakeBody(p1: Point, p2: Point, amplitude = 12, segments = 22): 
     center.push({ x: bx + bpx * offset, y: by + bpy * offset });
   }
 
+  // Width profile: a distinct head at the widest point, narrowing quickly
+  // into a long body section of consistent width, then tapering to a point
+  // only over the final stretch near the tail — not a gradual taper along
+  // the whole length.
   const headWidth = 20;
-  const tailWidth = 4;
+  const bodyWidth = 13;
+  const tailWidth = 3;
+  const neckEnd = 0.12; // head narrows to body width by this fraction
+  const tailStart = 0.72; // tail taper begins this far along
+  function widthAt(t: number): number {
+    if (t <= neckEnd) {
+      const u = t / neckEnd;
+      const eased = 1 - Math.pow(1 - u, 2);
+      return headWidth + (bodyWidth - headWidth) * eased;
+    }
+    if (t <= tailStart) return bodyWidth;
+    const u = (t - tailStart) / (1 - tailStart);
+    return bodyWidth + (tailWidth - bodyWidth) * Math.pow(u, 1.3);
+  }
   const left: Point[] = [];
   const right: Point[] = [];
   for (let i = 0; i < center.length; i++) {
     const t = i / (center.length - 1);
-    const width = headWidth + (tailWidth - headWidth) * t;
+    const width = widthAt(t);
     const prev = center[Math.max(0, i - 1)];
     const next = center[Math.min(center.length - 1, i + 1)];
     const tdx = next.x - prev.x;

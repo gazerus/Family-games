@@ -23,7 +23,7 @@ const COUNTDOWN_MS = 3000;
 // player's tab died mid-countdown), start anyway rather than hang forever.
 const MAX_READY_WAIT_MS = 5000;
 const WIN_FREEZE_MS = 2200;
-const NORMAL_MOVE_MS = 140;
+const NORMAL_MOVE_MS = 260;
 const FAST_MOVE_MS = 60;
 const SPEED_BOOST_MS = 4000;
 const REVEAL_MS = 3000;

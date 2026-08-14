@@ -577,6 +577,7 @@
 
 .dg-word--secret {
   color: var(--accent-strong);
+  text-transform: capitalize;
 }
 
 .dg-timer {
@@ -1222,12 +1223,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Inset white ring so the card reads as an illustrated card rather than
-     a flat color swatch; --cc-ring lets a wild card's chosen color add a
-     second, thicker ring on top without the two fighting over the
-     box-shadow property (inline style only sets the variable). */
-  --cc-ring: 0 0 0 0 transparent;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.65), var(--cc-ring), var(--shadow);
+  box-shadow: var(--shadow);
   color: white;
 }
 
@@ -1239,14 +1235,33 @@
   cursor: default;
 }
 
+/* UNO-style inset border: a clear gap between the card's outer edge and
+   the white border, rather than the border sitting flush against it.
+   For a colour-change (wild) card with a colour picked, this element's
+   own background fills solid inside the border while the base card
+   background (the rainbow gradient) stays visible outside it. */
+.critter-card__inset {
+  position: absolute;
+  inset: 9px;
+  border-radius: 8px;
+  border: 3px solid #fff;
+  z-index: 0;
+}
+
 .critter-card__symbol {
-  font-size: 36px;
-  font-weight: 800;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  position: relative;
+  z-index: 1;
+  font-size: 46px;
+  font-weight: 900;
+  color: white;
+  -webkit-text-stroke: 2px #000;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .critter-card__animal {
   position: absolute;
+  z-index: 1;
   bottom: 5px;
   right: 6px;
   font-size: 16px;
@@ -1730,4 +1745,185 @@
   display: block;
   touch-action: none;
   cursor: pointer;
+}
+
+/* Arrow Slide */
+
+.arrow-slide-game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.as-turn-banner {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.as-board-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.as-canvas {
+  width: 100%;
+  max-width: min(420px, 100%);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  display: block;
+  touch-action: none;
+  cursor: pointer;
+}
+
+/* Face Doodle */
+
+.face-doodle-game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 8px;
+}
+
+.fd-reveal-image {
+  max-width: min(360px, 100%);
+  width: 100%;
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.fd-canvas-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 8px 12px;
+  overflow: hidden;
+}
+
+/* Shrink-wraps to the canvas's own box — see the comment in
+   DoodleCanvas.tsx for why stickers need this as their exact frame. */
+.fd-canvas-inner {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.fd-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+  background: white;
+}
+
+.fd-sticker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 34px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+
+.fd-sticker__remove {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  line-height: 20px;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.fd-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 12px;
+}
+
+.fd-tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fd-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.fd-swatch--active {
+  border-color: var(--text-h);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.fd-size-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--accent-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.fd-size-btn span {
+  display: block;
+  border-radius: 50%;
+  background: var(--text-h);
+}
+
+.fd-size-btn--active {
+  border-color: var(--accent-strong);
+}
+
+.fd-sticker-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent-bg);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.fd-done-button {
+  margin: 8px 12px max(12px, env(safe-area-inset-bottom));
 }

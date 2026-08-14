@@ -37,12 +37,11 @@ export function CritterCard({
   onClick?: () => void;
 }) {
   const background = card.kind === "wild" ? WILD_BG : COLOR_HEX[card.color!];
-  const ring = card.kind === "wild" && activeColor ? COLOR_HEX[activeColor] : undefined;
+  // For a wild card, once a colour is chosen the area inside the white
+  // border fills with it while the area outside stays the rainbow base.
+  const insetFill = card.kind === "wild" && activeColor ? COLOR_HEX[activeColor] : "transparent";
   const Tag = onClick ? "button" : "div";
-  const style = {
-    background,
-    "--cc-ring": ring ? `0 0 0 9px ${ring}` : "0 0 0 0 transparent",
-  } as CSSProperties;
+  const style = { background } as CSSProperties;
   return (
     <Tag
       className={`critter-card ${dimmed ? "critter-card--dimmed" : ""}`}
@@ -50,6 +49,7 @@ export function CritterCard({
       onClick={onClick}
       disabled={onClick ? dimmed : undefined}
     >
+      <span className="critter-card__inset" style={{ background: insetFill }} />
       <span className="critter-card__symbol">{symbolFor(card)}</span>
       {card.kind === "number" && card.value != null && (
         <span className="critter-card__animal">{ANIMAL_EMOJI[card.value - 1]}</span>
