@@ -419,6 +419,32 @@
   font-size: 10px;
 }
 
+.video-tile__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: white;
+  font-size: 11px;
+  line-height: 20px;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.video-tile--compact .video-tile__remove {
+  width: 16px;
+  height: 16px;
+  font-size: 9px;
+  line-height: 16px;
+  top: 2px;
+  right: 2px;
+}
+
 /* Games tab */
 
 /* VIDEO_STRIP_HEIGHT: the video strip is `position: fixed` (see .video-strip

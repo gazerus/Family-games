@@ -9,7 +9,7 @@ import { VideoTab } from "./tabs/VideoTab";
 import { GamesTab } from "./tabs/GamesTab";
 import { GAMES } from "./games/registry";
 import { useBackGuard } from "./useBackGuard";
-import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import type { FamilyProfile } from "./types";
 import "./App.css";
 
@@ -148,7 +148,16 @@ function App() {
         </button>
       )}
       {inviteCopied && <div className="invite-toast">Link copied!</div>}
-      {showExitConfirm && <ExitConfirmDialog onStay={cancelExit} onLeave={confirmExit} />}
+      {showExitConfirm && (
+        <ConfirmDialog
+          title="Leave Family Games?"
+          message="You'll leave the call and lose anything happening in your game."
+          confirmLabel="Leave"
+          cancelLabel="Stay"
+          onConfirm={confirmExit}
+          onCancel={cancelExit}
+        />
+      )}
     </div>
   );
 }

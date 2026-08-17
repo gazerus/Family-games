@@ -28,6 +28,7 @@ interface CallContextValue {
   toggleCamera: () => void;
   leave: () => void;
   rejoin: () => void;
+  removeParticipant: (sessionId: string) => void;
   sendAppMessage: (data: AppMessage, target?: string) => void;
   onAppMessage: (handler: (data: AppMessage) => void) => () => void;
 }
@@ -67,6 +68,13 @@ export function CallProvider({
   const [cameraOn, setCameraOn] = useState(true);
   const [localSessionId, setLocalSessionId] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // A stuck/duplicate remote tile (a stale session from a dropped
+  // connection Daily hasn't cleaned up yet) needs to disappear the moment
+  // someone removes it, regardless of whether the room's permissions
+  // actually let the eject call below take effect server-side — so this is
+  // filtered in below rather than relying on a "participant-left" event
+  // that may never come.
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -172,6 +180,14 @@ export function CallProvider({
     setAttempt((a) => a + 1);
   }, []);
 
+  const removeParticipant = useCallback((sessionId: string) => {
+    setDismissedIds((prev) => new Set(prev).add(sessionId));
+    // Best-effort: only actually ejects them (for everyone) if this room's
+    // permissions allow it. Either way the tile is already gone locally
+    // above, which is the part that matters most.
+    callRef.current?.updateParticipant(sessionId, { eject: true });
+  }, []);
+
   const sendAppMessage = useCallback((data: AppMessage, target: string = "*") => {
     callRef.current?.sendAppMessage(data, target);
   }, []);
@@ -188,13 +204,14 @@ export function CallProvider({
     errorMessage,
     localName: name,
     localSessionId,
-    participants,
+    participants: participants.filter((p) => !dismissedIds.has(p.sessionId)),
     micOn,
     cameraOn,
     toggleMic,
     toggleCamera,
     leave,
     rejoin,
+    removeParticipant,
     sendAppMessage,
     onAppMessage,
   };
