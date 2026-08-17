@@ -395,18 +395,24 @@
   z-index: 15;
   display: flex;
   gap: 6px;
-  padding: 8px;
+  /* Extra right padding keeps tiles from growing under the fixed
+     settings/invite corner buttons (top:10-56px, z-index:20) so it never
+     fights them for space, even as tiles grow to fill the row below. */
+  padding: 8px 100px 8px 8px;
   overflow-x: auto;
   border-bottom: 1px solid var(--border);
   background: var(--bg);
   box-shadow: var(--shadow);
 }
 
+/* Grows to fill the strip's available width — up to max-width, so with the
+   usual 2 people each tile gets noticeably bigger than a fixed small size —
+   and shrinks itself back down automatically as more people join, since
+   flex-basis 0 splits whatever room is left evenly across every tile. */
 .video-tile--compact {
-  width: 64px;
-  height: 84px;
-  flex-shrink: 0;
-  aspect-ratio: auto;
+  flex: 1 1 0;
+  min-width: 64px;
+  max-width: 120px;
 }
 
 .video-tile--compact .video-tile__label {
@@ -416,16 +422,19 @@
 /* Games tab */
 
 /* VIDEO_STRIP_HEIGHT: the video strip is `position: fixed` (see .video-strip
-   above) starting 50px + safe-area-inset-top down, ~101px tall (84px
-   compact tile + 16px vertical padding + 1px border) — this padding-top
-   reserves exactly that much space so game content never renders starting
-   out hidden underneath the floating strip. Keep the two in sync. */
+   above) starting 50px + safe-area-inset-top down, ~177px tall at most
+   (120px max-width tile → 160px tall at its 3/4 aspect-ratio, + 16px
+   vertical padding + 1px border) — this padding-top reserves exactly that
+   much space so game content never renders starting out hidden underneath
+   the floating strip. With 3+ people tiles shrink below that max and leave
+   a little unused space here rather than something being hidden — keep the
+   two in sync if either changes. */
 .games-tab {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 151px);
+  padding-top: calc(env(safe-area-inset-top, 0px) + 227px);
 }
 
 .game-grid {
@@ -1936,4 +1945,26 @@
 .exit-confirm-leave {
   color: var(--danger);
   margin-top: 4px;
+}
+
+/* "Someone left the call" toast — sits below the video strip (which
+   already reserves ~227px via .games-tab's padding-top; see
+   VIDEO_STRIP_HEIGHT above) so it's never covered by it. */
+.left-call-toast {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 235px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 400px;
+  background: var(--danger);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  padding: 12px 16px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  z-index: 18;
+  cursor: pointer;
 }
