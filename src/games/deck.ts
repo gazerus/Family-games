@@ -14,16 +14,16 @@ export function isRedSuit(suit: Suit): boolean {
   return suit === "♥" || suit === "♦";
 }
 
-export function makeDeck(): Card[] {
+/** One or more standard 52-card decks merged, with globally-unique ids. */
+export function makeDeck(packs = 1): Card[] {
   const deck: Card[] = [];
   let id = 0;
-  for (const suit of SUITS) {
-    for (const rank of RANKS) {
-      deck.push({ id: id++, rank, suit });
+  for (let pack = 0; pack < packs; pack++) {
+    for (const suit of SUITS) {
+      for (const rank of RANKS) {
+        deck.push({ id: id++, rank, suit });
+      }
     }
   }
   return deck;
 }
-
-export const HAND_SIZE = 7;
-export const TOTAL_BOOKS = RANKS.length;

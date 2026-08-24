@@ -2207,3 +2207,192 @@
   transform: translateY(-6px);
   transition: transform 0.15s ease;
 }
+
+/* Spite & Malice */
+
+.sm-game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 4px;
+}
+
+.sm-turn-banner {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.sm-feed {
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.75;
+  padding: 0 16px;
+  min-height: 16px;
+  animation: bs-sunk-in 0.25s ease;
+}
+
+.sm-player-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+}
+
+.sm-player-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.8;
+}
+
+.sm-piles {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.sm-payoff {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.sm-pile-count {
+  font-size: 10px;
+  opacity: 0.65;
+}
+
+.sm-payoff .gf-card,
+.sm-side-slot .gf-card {
+  width: 34px;
+  height: 47px;
+  border-radius: 6px;
+}
+
+.sm-payoff .gf-card__rank,
+.sm-side-slot .gf-card__rank {
+  font-size: 11px;
+}
+
+.sm-payoff .gf-card__suit,
+.sm-side-slot .gf-card__suit {
+  font-size: 14px;
+  margin-top: 1px;
+}
+
+.sm-side-stacks {
+  display: flex;
+  gap: 4px;
+}
+
+.sm-side-slot {
+  position: relative;
+  padding: 0;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+  width: 38px;
+  height: 51px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sm-side-slot:disabled {
+  opacity: 0.4;
+}
+
+.sm-side-slot--selected {
+  outline: 3px solid #22c55e;
+  outline-offset: 1px;
+}
+
+.sm-side-slot--playable {
+  border-color: #22c55e;
+  border-style: solid;
+}
+
+.sm-side-count {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  background: var(--accent-strong);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 15px;
+  height: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sm-side-empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.sm-centre-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 12px 14px;
+}
+
+.sm-centre-slot {
+  position: relative;
+  padding: 0;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  background: var(--accent-bg);
+  width: 52px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sm-centre-slot:disabled {
+  opacity: 0.6;
+}
+
+.sm-centre-slot--highlight {
+  border-color: #22c55e;
+  border-style: solid;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+}
+
+.sm-centre-empty {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.6;
+}
+
+.sm-centre-count {
+  position: absolute;
+  bottom: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.sm-my-hand {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 12px max(12px, env(safe-area-inset-bottom));
+}

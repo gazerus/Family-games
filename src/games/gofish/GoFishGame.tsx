@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useHostGameState } from "../useHostGameState";
 import type { GameProps } from "../types";
 import { colorForPlayerIndex } from "../playerColors";
-import { PlayingCard } from "./PlayingCard";
-import type { Card, Rank } from "./deck";
+import { PlayingCard } from "../PlayingCard";
+import type { Card, Rank } from "../deck";
 import {
   applyAsk,
   applyRespond,

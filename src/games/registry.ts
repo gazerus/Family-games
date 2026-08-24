@@ -9,6 +9,7 @@ import { MazeRaceGame } from "./mazerace/MazeRaceGame";
 import { FishingGame } from "./fishing/FishingGame";
 import { FaceDoodleGame } from "./facedoodle/FaceDoodleGame";
 import { GoFishGame } from "./gofish/GoFishGame";
+import { SpiteAndMaliceGame } from "./spitemalice/SpiteAndMaliceGame";
 
 /**
  * Add a new game by dropping its component here — no other wiring needed.
@@ -97,5 +98,13 @@ export const GAMES: GameDefinition[] = [
     description: "Collect sets of four — but handing over a match is on the honour system.",
     minPlayers: 2,
     component: GoFishGame,
+  },
+  {
+    id: "spite-and-malice",
+    name: "Spite & Malice",
+    icon: "♠️",
+    description: "Race to clear your pay-off pile first by building centre stacks Ace to Queen.",
+    minPlayers: 2,
+    component: SpiteAndMaliceGame,
   },
 ];

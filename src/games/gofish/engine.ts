@@ -1,5 +1,7 @@
 import { shuffle } from "../shuffle";
-import { RANKS, HAND_SIZE, makeDeck, type Card, type Rank } from "./deck";
+import { RANKS, makeDeck, type Card, type Rank } from "../deck";
+
+const HAND_SIZE = 7;
 
 export interface EnginePlayer {
   sessionId: string;
