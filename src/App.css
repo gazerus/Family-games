@@ -2396,3 +2396,121 @@
   flex-wrap: wrap;
   padding: 10px 12px max(12px, env(safe-area-inset-bottom));
 }
+
+/* Arrow Slide */
+
+.arrow-slide-game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.as-turn-banner {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.as-level-select {
+  gap: 10px;
+}
+
+.as-level-card {
+  width: 100%;
+  max-width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  box-shadow: var(--shadow);
+}
+
+.as-level-name {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.as-level-blurb {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.as-board-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.as-board {
+  position: relative;
+  width: 100%;
+  max-width: min(440px, 100%);
+  border-radius: 20px;
+  background: linear-gradient(160deg, #faf5ef 0%, #f1e9f7 55%, #e8f0e7 100%);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.as-piece {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: none;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 4px 10px rgba(80, 60, 50, 0.25),
+    0 1px 2px rgba(80, 60, 50, 0.15);
+  cursor: pointer;
+  padding: 0;
+}
+
+.as-piece:disabled {
+  cursor: default;
+}
+
+.as-piece__arrow {
+  font-size: min(4.5vw, 22px);
+  font-weight: 700;
+  color: #4a3f35;
+  pointer-events: none;
+}
+
+.as-piece--exiting {
+  pointer-events: none;
+}
+
+.as-piece--jiggle {
+  animation: as-jiggle 0.32s ease;
+}
+
+@keyframes as-jiggle {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  20% {
+    transform: translate(-50%, -50%) rotate(-6deg);
+  }
+  40% {
+    transform: translate(-50%, -50%) rotate(5deg);
+  }
+  60% {
+    transform: translate(-50%, -50%) rotate(-4deg);
+  }
+  80% {
+    transform: translate(-50%, -50%) rotate(3deg);
+  }
+}
