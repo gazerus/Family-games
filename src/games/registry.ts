@@ -8,6 +8,7 @@ import { BattleshipGame } from "./battleship/BattleshipGame";
 import { MazeRaceGame } from "./mazerace/MazeRaceGame";
 import { FishingGame } from "./fishing/FishingGame";
 import { FaceDoodleGame } from "./facedoodle/FaceDoodleGame";
+import { GoFishGame } from "./gofish/GoFishGame";
 
 /**
  * Add a new game by dropping its component here — no other wiring needed.
@@ -88,5 +89,13 @@ export const GAMES: GameDefinition[] = [
     description: "Snap their photo, decorate it with stickers and doodles, then send it back.",
     minPlayers: 2,
     component: FaceDoodleGame,
+  },
+  {
+    id: "go-fish",
+    name: "Go Fish",
+    icon: "🐟",
+    description: "Collect sets of four — but handing over a match is on the honour system.",
+    minPlayers: 2,
+    component: GoFishGame,
   },
 ];

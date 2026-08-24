@@ -15,7 +15,7 @@ import {
   type EditableShip,
   type Ship,
 } from "./fleet";
-import { ShipHull, shipName } from "./ShipHull";
+import { ShipHull, ShipHullSvg, shipName } from "./ShipHull";
 
 const GAME_ID = "battleship";
 const WIN_FREEZE_MS = 3400;
@@ -38,6 +38,13 @@ interface SunkEvent {
   size: number;
 }
 
+interface ShotEvent {
+  id: string;
+  shooterId: string;
+  hit: boolean;
+  causedSunk: boolean;
+}
+
 interface PublicState {
   phase: "placing" | "playing" | "game-over";
   hostId: string;
@@ -48,6 +55,7 @@ interface PublicState {
   shots: Record<string, Shot[]>;
   shipsRemaining: Record<string, number>;
   lastSunk: SunkEvent | null;
+  lastShot: ShotEvent | null;
 }
 
 interface FleetPayload {
@@ -96,10 +104,12 @@ export function BattleshipGame({ onExit }: GameProps) {
 
   const [myFleet, setMyFleet] = useState<Ship[]>([]);
   const [placedShips, setPlacedShips] = useState<EditableShip[]>([]);
-  const [sunkToast, setSunkToast] = useState<string | null>(null);
+  const [hitPopup, setHitPopup] = useState<string | null>(null);
+  const [sunkPopup, setSunkPopup] = useState<{ message: string; size: number } | null>(null);
   const [revealWinner, setRevealWinner] = useState(false);
   const fleetsRef = useRef<Record<string, Ship[]>>({});
   const processedSunkId = useRef<string | null>(null);
+  const processedShotId = useRef<string | null>(null);
   const placementBoardRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<{
     id: number;
@@ -134,6 +144,7 @@ export function BattleshipGame({ onExit }: GameProps) {
           current.players.map((p) => [p.sessionId, fleetsRef.current[p.sessionId]?.length ?? SHIP_SIZES.length])
         ),
         lastSunk: null,
+        lastShot: null,
       });
       // Push everyone's own fleet back to them now — covers the case where
       // someone reopened this screen while waiting and lost their local copy.
@@ -169,6 +180,7 @@ export function BattleshipGame({ onExit }: GameProps) {
         !ship.every((c) => prevHitCells.has(cellKey(c.row, c.col))) &&
         ship.every((c) => hitCells.has(cellKey(c.row, c.col)))
     );
+    const shotId = `${Date.now()}-${row}-${col}`;
 
     updateState({
       ...current,
@@ -178,8 +190,9 @@ export function BattleshipGame({ onExit }: GameProps) {
       winnerId: won ? senderId : null,
       currentPlayerId: won ? senderId : opponent.sessionId,
       lastSunk: justSunk
-        ? { id: `${Date.now()}-${row}-${col}`, shooterId: senderId, ownerId: opponent.sessionId, size: justSunk.length }
+        ? { id: shotId, shooterId: senderId, ownerId: opponent.sessionId, size: justSunk.length }
         : current.lastSunk,
+      lastShot: { id: shotId, shooterId: senderId, hit, causedSunk: !!justSunk },
     });
   }
 
@@ -208,6 +221,18 @@ export function BattleshipGame({ onExit }: GameProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onMessage, isHost, state]);
 
+  // A plain hit gets a quick big-icon flourish; a sunk shot gets its own
+  // bigger popup instead (see below) rather than both firing for one shot.
+  useEffect(() => {
+    const evt = state?.lastShot;
+    if (!evt || processedShotId.current === evt.id) return;
+    processedShotId.current = evt.id;
+    if (!evt.hit || evt.causedSunk) return;
+    setHitPopup(evt.id);
+    const t = setTimeout(() => setHitPopup(null), 900);
+    return () => clearTimeout(t);
+  }, [state?.lastShot]);
+
   useEffect(() => {
     const evt = state?.lastSunk;
     if (!evt || processedSunkId.current === evt.id) return;
@@ -215,10 +240,13 @@ export function BattleshipGame({ onExit }: GameProps) {
     const isMe = evt.shooterId === localSessionId;
     const ownerName = state?.players.find((p) => p.sessionId === evt.ownerId)?.name ?? "their";
     const shooterName = state?.players.find((p) => p.sessionId === evt.shooterId)?.name ?? "Someone";
-    setSunkToast(
-      isMe ? `You sank ${ownerName}'s ${shipName(evt.size)}!` : `${shooterName} sank your ${shipName(evt.size)}!`
-    );
-    const t = setTimeout(() => setSunkToast(null), 3200);
+    setSunkPopup({
+      message: isMe
+        ? `You sunk ${ownerName}'s ${shipName(evt.size)}!`
+        : `${shooterName} sunk your ${shipName(evt.size)}!`,
+      size: evt.size,
+    });
+    const t = setTimeout(() => setSunkPopup(null), 3200);
     return () => clearTimeout(t);
   }, [state?.lastSunk, state?.players, localSessionId]);
 
@@ -240,8 +268,10 @@ export function BattleshipGame({ onExit }: GameProps) {
     fleetsRef.current = {};
     setMyFleet([]);
     setPlacedShips(shipsToEditable(placeFleet()));
-    setSunkToast(null);
+    setHitPopup(null);
+    setSunkPopup(null);
     processedSunkId.current = null;
+    processedShotId.current = null;
     startAsHost({
       phase: "placing",
       hostId: localSessionId ?? "",
@@ -252,6 +282,7 @@ export function BattleshipGame({ onExit }: GameProps) {
       shots: {},
       shipsRemaining: {},
       lastSunk: null,
+      lastShot: null,
     });
   }
 
@@ -483,7 +514,22 @@ export function BattleshipGame({ onExit }: GameProps) {
         </div>
       </div>
 
-      {sunkToast && <div className="bs-sunk-toast">💥 {sunkToast}</div>}
+      {hitPopup && (
+        <div className="bs-hit-popup-overlay" key={hitPopup}>
+          <span className="bs-hit-popup">💥</span>
+        </div>
+      )}
+
+      {sunkPopup && (
+        <div className="bs-sunk-popup-overlay">
+          <div className="bs-sunk-popup">
+            <div className="bs-sunk-popup__ship" style={{ aspectRatio: `${sunkPopup.size} / 1` }}>
+              <ShipHullSvg size={sunkPopup.size} dimmed />
+            </div>
+            <p>{sunkPopup.message}</p>
+          </div>
+        </div>
+      )}
 
       <div className="bs-scoreboard">
         <span className="dom-opponent-chip">You: {state.shipsRemaining[localSessionId ?? ""] ?? 0} ships left</span>

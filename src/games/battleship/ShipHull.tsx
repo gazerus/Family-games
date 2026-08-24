@@ -34,34 +34,21 @@ function point(l: number, t: number, horizontal: boolean): string {
   return horizontal ? `${l},${t}` : `${t},${l}`;
 }
 
-export function ShipHull({
-  ship,
-  draggable = false,
-  onPointerDown,
-  onPointerMove,
-  onPointerUp,
-  onPointerCancel,
+/** Just the hull artwork, sized to its own box — no board-relative
+ * positioning — so it can be reused standalone (e.g. in the "sunk" popup,
+ * always drawn horizontal there) as well as placed on the grid by
+ * `ShipHull` below (which needs either orientation). */
+export function ShipHullSvg({
+  size,
+  horizontal = true,
+  dimmed = false,
 }: {
-  ship: Ship;
-  draggable?: boolean;
-  onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
-  onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
-  onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
-  onPointerCancel?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  size: number;
+  horizontal?: boolean;
+  dimmed?: boolean;
 }) {
   const gradId = useId();
-  const rows = ship.map((c) => c.row);
-  const cols = ship.map((c) => c.col);
-  const minRow = Math.min(...rows);
-  const minCol = Math.min(...cols);
-  const horizontal = new Set(rows).size === 1;
-  const size = ship.length;
   const colors = HULL_COLORS[size] ?? HULL_COLORS[2];
-
-  const left = (minCol / BOARD_SIZE) * 100;
-  const top = (minRow / BOARD_SIZE) * 100;
-  const width = ((horizontal ? size : 1) / BOARD_SIZE) * 100;
-  const height = ((horizontal ? 1 : size) / BOARD_SIZE) * 100;
 
   const L = size * UNIT;
   const T = UNIT;
@@ -92,7 +79,7 @@ export function ShipHull({
   const cabinLen = UNIT * 0.4;
   const cabinT0 = T * 0.3;
   const cabinThick = T * 0.4;
-  const cabinCorner = horizontal ? pt(cabinL0, cabinT0) : pt(cabinT0, cabinL0);
+  const cabinCorner = pt(cabinL0, cabinT0);
   const [cabinX, cabinY] = cabinCorner.split(",").map(Number);
   const cabinW = horizontal ? cabinLen : cabinThick;
   const cabinH = horizontal ? cabinThick : cabinLen;
@@ -105,6 +92,55 @@ export function ShipHull({
   });
 
   return (
+    <svg
+      viewBox={viewBox}
+      preserveAspectRatio="none"
+      className={`bs-hull-svg ${dimmed ? "bs-hull-svg--dimmed" : ""}`}
+    >
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor={colors.deck} />
+          <stop offset="100%" stopColor={colors.hull} />
+        </linearGradient>
+      </defs>
+      <path d={hullPath} fill={`url(#${gradId})`} stroke={colors.trim} strokeWidth="0.9" strokeLinejoin="round" />
+      <path d={deckPath} fill={colors.deck} opacity="0.5" />
+      <rect x={cabinX} y={cabinY} width={cabinW} height={cabinH} rx="1.2" fill={colors.trim} />
+      {portholes.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r={T * 0.07} fill="#e0f2fe" opacity="0.9" />
+      ))}
+    </svg>
+  );
+}
+
+export function ShipHull({
+  ship,
+  draggable = false,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+}: {
+  ship: Ship;
+  draggable?: boolean;
+  onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerCancel?: (e: React.PointerEvent<HTMLDivElement>) => void;
+}) {
+  const rows = ship.map((c) => c.row);
+  const cols = ship.map((c) => c.col);
+  const minRow = Math.min(...rows);
+  const minCol = Math.min(...cols);
+  const horizontal = new Set(rows).size === 1;
+  const size = ship.length;
+
+  const left = (minCol / BOARD_SIZE) * 100;
+  const top = (minRow / BOARD_SIZE) * 100;
+  const width = ((horizontal ? size : 1) / BOARD_SIZE) * 100;
+  const height = ((horizontal ? 1 : size) / BOARD_SIZE) * 100;
+
+  return (
     <div
       className={`bs-hull ${horizontal ? "bs-hull--h" : "bs-hull--v"} ${draggable ? "bs-hull--draggable" : ""}`}
       style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%` }}
@@ -114,20 +150,7 @@ export function ShipHull({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
-      <svg viewBox={viewBox} preserveAspectRatio="none" className="bs-hull-svg">
-        <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={colors.deck} />
-            <stop offset="100%" stopColor={colors.hull} />
-          </linearGradient>
-        </defs>
-        <path d={hullPath} fill={`url(#${gradId})`} stroke={colors.trim} strokeWidth="0.9" strokeLinejoin="round" />
-        <path d={deckPath} fill={colors.deck} opacity="0.5" />
-        <rect x={cabinX} y={cabinY} width={cabinW} height={cabinH} rx="1.2" fill={colors.trim} />
-        {portholes.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={T * 0.07} fill="#e0f2fe" opacity="0.9" />
-        ))}
-      </svg>
+      <ShipHullSvg size={size} horizontal={horizontal} />
     </div>
   );
 }
