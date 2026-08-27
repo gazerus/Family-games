@@ -15,18 +15,18 @@ export interface LevelDef {
   name: string;
   blurb: string;
   count: number;
-  radius: number; // how tightly clustered around the board centre
 }
 
 export const BOARD_UNITS = 400;
-const PIECE_LENGTH = 92;
-const PIECE_THICKNESS = 30;
+const PIECE_LENGTH = 80;
+const PIECE_THICKNESS = 24;
+const PIECE_GAP = 5; // minimum breathing room between pieces so they read as distinct, non-overlapping
 const DIRS: Dir[] = ["up", "down", "left", "right"];
 
 export const LEVELS: LevelDef[] = [
-  { id: "warmup", name: "The Warm-up", blurb: "A loose little cluster — 7 pieces", count: 7, radius: 105 },
-  { id: "knot", name: "The Knot", blurb: "A tight, interwoven tangle — 13 pieces", count: 13, radius: 88 },
-  { id: "avalanche", name: "The Avalanche", blurb: "A dense heap — 22 pieces, take your time", count: 22, radius: 150 },
+  { id: "warmup", name: "The Warm-up", blurb: "A loose scatter — 7 pieces", count: 7 },
+  { id: "knot", name: "The Knot", blurb: "A snug arrangement — 13 pieces", count: 13 },
+  { id: "avalanche", name: "The Avalanche", blurb: "Tightly packed — 22 pieces, take your time", count: 22 },
 ];
 
 interface Rect {
@@ -65,6 +65,10 @@ function escapeRect(p: Pick<Piece, "x" | "y" | "dir" | "length" | "thickness">):
 
 function rectsOverlap(a: Rect, b: Rect): boolean {
   return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+}
+
+function inflateRect(r: Rect, pad: number): Rect {
+  return { left: r.left - pad, right: r.right + pad, top: r.top - pad, bottom: r.bottom + pad };
 }
 
 /** Total distance (in board units) a piece must travel along its own axis
@@ -108,50 +112,59 @@ function isSolvable(pieces: Piece[]): boolean {
   return remaining.size === 0;
 }
 
-function clamp(v: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, v));
-}
-
-function randomHeap(count: number, radius: number): Piece[] {
-  const cx = BOARD_UNITS / 2;
-  const cy = BOARD_UNITS / 2;
-  const margin = PIECE_LENGTH / 2 + 8;
+/** Places `count` pieces one at a time, rejecting any spot that overlaps an
+ * already-placed piece (padded by PIECE_GAP), so the heap always renders as
+ * flat, non-overlapping pieces in 2D. Returns null if it couldn't fit them
+ * all after a generous number of tries. */
+function tryPack(count: number): Piece[] | null {
+  const margin = PIECE_LENGTH / 2 + 6;
   const pieces: Piece[] = [];
-  for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    // sqrt spreads points uniformly across the disk rather than bunching at the centre
-    const dist = Math.sqrt(Math.random()) * radius;
-    const x = clamp(cx + Math.cos(angle) * dist, margin, BOARD_UNITS - margin);
-    const y = clamp(cy + Math.sin(angle) * dist, margin, BOARD_UNITS - margin);
-    pieces.push({
-      id: i,
-      x,
-      y,
-      dir: DIRS[Math.floor(Math.random() * DIRS.length)],
-      length: PIECE_LENGTH,
-      thickness: PIECE_THICKNESS,
-      layer: i,
-    });
+  for (let id = 0; id < count; id++) {
+    let placed = false;
+    for (let attempt = 0; attempt < 400; attempt++) {
+      const x = margin + Math.random() * (BOARD_UNITS - margin * 2);
+      const y = margin + Math.random() * (BOARD_UNITS - margin * 2);
+      const dir = DIRS[Math.floor(Math.random() * DIRS.length)];
+      const candidate: Piece = { id, x, y, dir, length: PIECE_LENGTH, thickness: PIECE_THICKNESS, layer: id };
+      const padded = inflateRect(pieceRect(candidate), PIECE_GAP / 2);
+      if (!pieces.some((p) => rectsOverlap(padded, pieceRect(p)))) {
+        pieces.push(candidate);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) return null;
   }
   return pieces;
 }
 
+/** Deterministic, always-non-overlapping, always-solvable grid fallback for
+ * the rare case random packing can't find room within the retry budget. */
+function gridFallback(count: number): Piece[] {
+  const cols = Math.ceil(Math.sqrt(count));
+  const cellW = BOARD_UNITS / cols;
+  const rows = Math.ceil(count / cols);
+  const cellH = BOARD_UNITS / rows;
+  return Array.from({ length: count }, (_, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    return {
+      id: i,
+      x: cellW * (col + 0.5),
+      y: cellH * (row + 0.5),
+      dir: (["up", "down", "left", "right"] as Dir[])[i % 4],
+      length: Math.min(PIECE_LENGTH, cellW - 8, cellH - 8),
+      thickness: Math.min(PIECE_THICKNESS, cellW - 12, cellH - 12),
+      layer: i,
+    };
+  });
+}
+
 export function generateHeap(levelId: string): Piece[] {
   const level = LEVELS.find((l) => l.id === levelId) ?? LEVELS[0];
-  for (let attempt = 0; attempt < 300; attempt++) {
-    const pieces = randomHeap(level.count, level.radius);
-    if (isSolvable(pieces)) return pieces;
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const pieces = tryPack(level.count);
+    if (pieces && isSolvable(pieces)) return pieces;
   }
-  // Practically unreachable, but fall back to a trivially-solvable ring
-  // (everyone facing outward from the centre) rather than ever failing.
-  const cx = BOARD_UNITS / 2;
-  const cy = BOARD_UNITS / 2;
-  return Array.from({ length: level.count }, (_, i) => {
-    const angle = (i / level.count) * Math.PI * 2;
-    const dist = level.radius * 0.6;
-    const x = cx + Math.cos(angle) * dist;
-    const y = cy + Math.sin(angle) * dist;
-    const dir: Dir = Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle)) ? (Math.cos(angle) > 0 ? "right" : "left") : Math.sin(angle) > 0 ? "down" : "up";
-    return { id: i, x, y, dir, length: PIECE_LENGTH, thickness: PIECE_THICKNESS, layer: i };
-  });
+  return gridFallback(level.count);
 }
