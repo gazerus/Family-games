@@ -2396,3 +2396,194 @@
   flex-wrap: wrap;
   padding: 10px 12px max(12px, env(safe-area-inset-bottom));
 }
+
+/* Test mode — several simulated players in one page (see src/test/). The bar
+   sits above whichever player's app is showing; the other players' apps stay
+   mounted but hidden, same trick the two tabs use above. */
+
+.test-root {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.test-bar {
+  flex: none;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: max(6px, env(safe-area-inset-top)) 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 30;
+}
+
+.test-bar__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.test-bar__chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.test-bar__chips::-webkit-scrollbar {
+  display: none;
+}
+
+.test-bar__badge {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-strong);
+  background: var(--accent-bg);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.test-bar__hint {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.test-bar__exit {
+  flex: none;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.test-chip-group {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.test-chip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.test-chip--active {
+  border-color: var(--player-color, var(--accent));
+  background: var(--surface);
+  color: var(--text-h);
+  box-shadow: inset 0 0 0 1px var(--player-color, var(--accent));
+}
+
+.test-chip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--player-color, var(--accent));
+}
+
+.test-chip__name {
+  white-space: nowrap;
+}
+
+/* Something happened for a player you're not currently looking at. */
+.test-chip__badge {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: test-chip-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes test-chip-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.test-chip__remove {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.test-chip--add {
+  border-style: dashed;
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.test-panes {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.test-pane {
+  display: none;
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  /* The app shell inside scrolls its own content, same as it does when it
+     owns the whole viewport — the pane itself never scrolls. */
+  overflow: hidden;
+}
+
+.test-pane--active {
+  display: flex;
+}
+
+/* The shell normally fills the viewport; inside a pane it fills the pane
+   instead, so the test bar isn't pushed off-screen. */
+.test-pane .app-shell {
+  min-height: 0;
+  flex: 1;
+}
+
+/* Corner buttons are fixed to the viewport in the real app, which would put
+   them on top of the test bar — pin them to the pane instead. */
+.test-pane .settings-corner-button {
+  position: absolute;
+  top: 10px;
+}
+
+.setup-test-link {
+  opacity: 0.75;
+  font-size: 13px;
+}

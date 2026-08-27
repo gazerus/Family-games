@@ -38,6 +38,9 @@ sign-up. Games so far:
   storing anything for later delivery (see "What this doesn't do" below).
 - **The app itself is a static site** — a Vite + React PWA, installable to a
   phone's home screen, deployed for free on GitHub Pages.
+- **Test mode** swaps that connection for an in-page one, so one person can
+  play several sides at once without a second device — see "Trying it out on
+  your own" below.
 
 ## One-time setup (do this once, for the whole family)
 
@@ -54,6 +57,52 @@ sign-up. Games so far:
 
 To use a different room later, or fix a typo, tap the small ⚙️ in the top
 corner — it clears the saved name/room and shows the setup screen again.
+
+## Trying it out on your own (test mode)
+
+Testing a two-player game normally needs two people and two phones. Test mode
+lets one person play both sides on one device: it runs several simulated
+players side by side in the same page, and you switch between them with a tap.
+
+Open it either way:
+
+- Add `?test=1` to the app's address, e.g.
+  `https://gazerus.github.io/Family-games/?test=1`, or
+- tap the ⚙️ in the corner and pick **🧪 Try the games solo (test mode)**.
+
+You get a bar across the top with a chip per simulated player. Tap a chip to
+become that player — you're now looking at their phone, with their own tabs
+and their own view of whatever game is running. **+ Add** brings in another
+player (up to as many as a game supports), and the ✕ on the player you're
+currently viewing makes them leave the call, which is how to check what
+everyone else sees when someone drops out mid-game. A dot on a chip means
+something happened for that player while you were looking at someone else —
+usually that it's their turn.
+
+To play a game, open it as *each* player (games only start once at least two
+people have that game's screen open), then hit Start as one of them.
+
+Test mode is also live on the deployed site, not just locally, so it's there
+on a phone too. It leaves nothing behind: it never touches the saved name and
+room, and **Exit** in the top corner returns to the normal app.
+
+### What test mode does and doesn't cover
+
+It's the real app — the same screens and the same game code, right down to the
+"whoever starts is the authority" sync protocol. What's swapped out is the
+connection underneath: instead of joining a Daily room, the simulated players
+pass messages to each other inside the page (see `src/test/testBus.ts`), so
+there's no room, no account, and no data used.
+
+That means it covers game rules, turn order, scoring, sync between players,
+late joiners and drop-outs — but **not video or audio**. Nobody's camera is
+opened, so every video tile shows the same name-initial placeholder a real
+person shows with their camera off. For anything about the call itself, you
+still need two real devices.
+
+Opening the test link in two browser tabs or windows works too — players in
+either one see each other, so you can watch two sides at once on a laptop
+instead of switching back and forth.
 
 ## Adding the app to a phone's home screen
 
@@ -120,6 +169,9 @@ Games are self-contained and register themselves in one place. To add one:
    `src/games/types.ts`) — call `onExit()` to return to the games hub.
 4. Add it to the list in `src/games/registry.ts`. That's the only wiring
    needed; it shows up in the Games tab automatically.
+5. Play it in test mode (`?test=1`) — it's the fastest way to drive both
+   sides of a new game's turn order and spot a desync, and it needs nothing
+   but the dev server.
 
 `src/games/drawguess/` is the most involved worked example — turn-taking,
 a synced canvas, scoring, and round timers, all layered on top of
@@ -148,8 +200,12 @@ npm run build       # outputs to dist/
 ```
 
 Since there's no backend, `npm run dev` on one machine and a phone on the
-same Daily room both "just work" — point the phone at your deployed version,
-or run two browser tabs locally, to test multiplayer bits.
+same Daily room both "just work" — point the phone at your deployed version
+to test the real thing end to end.
+
+For the multiplayer bits specifically, `http://localhost:5173/Family-games/?test=1`
+is quicker: test mode gives you several players in the one page with no room
+and no second device (see "Trying it out on your own" above).
 
 ## Deploying (GitHub Pages)
 

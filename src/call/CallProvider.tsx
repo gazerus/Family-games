@@ -3,37 +3,11 @@ import Daily, {
   type DailyEventObjectAppMessage,
   type DailyEventObjectFatalError,
 } from "@daily-co/daily-js";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { CallContext } from "./CallContext";
+import type { CallContextValue, JoinState } from "./CallContext";
 import type { AppMessage, ParticipantTile } from "../types";
-
-export type JoinState = "connecting" | "joined" | "left" | "error";
-
-interface CallContextValue {
-  joinState: JoinState;
-  errorMessage: string | null;
-  localName: string;
-  localSessionId: string | null;
-  participants: ParticipantTile[];
-  micOn: boolean;
-  cameraOn: boolean;
-  toggleMic: () => void;
-  toggleCamera: () => void;
-  leave: () => void;
-  rejoin: () => void;
-  removeParticipant: (sessionId: string) => void;
-  sendAppMessage: (data: AppMessage, target?: string) => void;
-  onAppMessage: (handler: (data: AppMessage) => void) => () => void;
-}
-
-const CallContext = createContext<CallContextValue | null>(null);
 
 // Module-level because Daily's "one call object per page" rule is global,
 // not per-component-instance.
@@ -219,10 +193,4 @@ export function CallProvider({
   return (
     <CallContext.Provider value={value}>{children}</CallContext.Provider>
   );
-}
-
-export function useCall(): CallContextValue {
-  const ctx = useContext(CallContext);
-  if (!ctx) throw new Error("useCall must be used within a CallProvider");
-  return ctx;
 }

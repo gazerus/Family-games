@@ -54,10 +54,13 @@ export function useHostGameState<TState extends { phase: string }, TPayload = TS
         }
         return;
       }
-      if (type === "here") {
+      if (type === "here" || type === "here-ack") {
         setPresentIds((prev) => (prev.has(senderId) ? prev : new Set(prev).add(senderId)));
-        // Reply so the newcomer learns I'm here too, without a full roster protocol.
-        send("here", {} as unknown as TPayload, senderId);
+        // Answer the newcomer so they learn I'm here too, without a full
+        // roster protocol. The answer is deliberately a *different* type:
+        // replying to it in turn would bounce "here" back and forth between
+        // the two of us forever.
+        if (type === "here") send("here-ack", {} as unknown as TPayload, senderId);
         return;
       }
       if (type === "leaving") {

@@ -23,10 +23,12 @@ export function SetupScreen({
   initial,
   onComplete,
   onCancel,
+  onTestMode,
 }: {
   initial: Partial<FamilyProfile> | null;
   onComplete: (profile: FamilyProfile) => void;
   onCancel?: () => void;
+  onTestMode?: () => void;
 }) {
   const linkedRoomUrl = initial?.roomUrl && isLikelyDailyUrl(initial.roomUrl) ? initial.roomUrl : null;
 
@@ -114,6 +116,12 @@ export function SetupScreen({
         >
           {showHelp ? "Hide" : "Where do I get a room link?"}
         </button>
+
+        {onTestMode && (
+          <button type="button" className="link-button setup-test-link" onClick={onTestMode}>
+            🧪 Try the games solo (test mode)
+          </button>
+        )}
 
         {showHelp && (
           <div className="setup-help">
