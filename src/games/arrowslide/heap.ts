@@ -14,19 +14,22 @@ export interface LevelDef {
   id: string;
   name: string;
   blurb: string;
-  count: number;
+  rows: number;
+  cols: number;
 }
 
 export const BOARD_UNITS = 400;
-const PIECE_LENGTH = 80;
-const PIECE_THICKNESS = 24;
-const PIECE_GAP = 5; // minimum breathing room between pieces so they read as distinct, non-overlapping
-const DIRS: Dir[] = ["up", "down", "left", "right"];
+const SEGMENTS = 3; // each piece spans this many grid cells along its length
+const CELL = 30;
+const PIECE_LENGTH = CELL * SEGMENTS;
+const PIECE_THICKNESS = CELL;
 
+// rows/cols chosen so rows*cols is divisible by SEGMENTS and the block
+// reads as a square/rectangle, not a sliver.
 export const LEVELS: LevelDef[] = [
-  { id: "warmup", name: "The Warm-up", blurb: "A loose scatter — 7 pieces", count: 7 },
-  { id: "knot", name: "The Knot", blurb: "A snug arrangement — 13 pieces", count: 13 },
-  { id: "avalanche", name: "The Avalanche", blurb: "Tightly packed — 22 pieces, take your time", count: 22 },
+  { id: "warmup", name: "The Warm-up", blurb: "A neat little block — 8 pieces", rows: 4, cols: 6 },
+  { id: "knot", name: "The Knot", blurb: "A snug square — 12 pieces", rows: 6, cols: 6 },
+  { id: "avalanche", name: "The Avalanche", blurb: "A dense block — 24 pieces, take your time", rows: 8, cols: 9 },
 ];
 
 interface Rect {
@@ -65,10 +68,6 @@ function escapeRect(p: Pick<Piece, "x" | "y" | "dir" | "length" | "thickness">):
 
 function rectsOverlap(a: Rect, b: Rect): boolean {
   return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
-}
-
-function inflateRect(r: Rect, pad: number): Rect {
-  return { left: r.left - pad, right: r.right + pad, top: r.top - pad, bottom: r.bottom + pad };
 }
 
 /** Total distance (in board units) a piece must travel along its own axis
@@ -112,59 +111,118 @@ function isSolvable(pieces: Piece[]): boolean {
   return remaining.size === 0;
 }
 
-/** Places `count` pieces one at a time, rejecting any spot that overlaps an
- * already-placed piece (padded by PIECE_GAP), so the heap always renders as
- * flat, non-overlapping pieces in 2D. Returns null if it couldn't fit them
- * all after a generous number of tries. */
-function tryPack(count: number): Piece[] | null {
-  const margin = PIECE_LENGTH / 2 + 6;
-  const pieces: Piece[] = [];
-  for (let id = 0; id < count; id++) {
-    let placed = false;
-    for (let attempt = 0; attempt < 400; attempt++) {
-      const x = margin + Math.random() * (BOARD_UNITS - margin * 2);
-      const y = margin + Math.random() * (BOARD_UNITS - margin * 2);
-      const dir = DIRS[Math.floor(Math.random() * DIRS.length)];
-      const candidate: Piece = { id, x, y, dir, length: PIECE_LENGTH, thickness: PIECE_THICKNESS, layer: id };
-      const padded = inflateRect(pieceRect(candidate), PIECE_GAP / 2);
-      if (!pieces.some((p) => rectsOverlap(padded, pieceRect(p)))) {
-        pieces.push(candidate);
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) return null;
+function shuffled<T>(arr: T[]): T[] {
+  const copy = arr.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
   }
-  return pieces;
+  return copy;
 }
 
-/** Deterministic, always-non-overlapping, always-solvable grid fallback for
- * the rare case random packing can't find room within the retry budget. */
-function gridFallback(count: number): Piece[] {
-  const cols = Math.ceil(Math.sqrt(count));
-  const cellW = BOARD_UNITS / cols;
-  const rows = Math.ceil(count / cols);
-  const cellH = BOARD_UNITS / rows;
-  return Array.from({ length: count }, (_, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    return {
-      id: i,
-      x: cellW * (col + 0.5),
-      y: cellH * (row + 0.5),
-      dir: (["up", "down", "left", "right"] as Dir[])[i % 4],
-      length: Math.min(PIECE_LENGTH, cellW - 8, cellH - 8),
-      thickness: Math.min(PIECE_THICKNESS, cellW - 12, cellH - 12),
-      layer: i,
-    };
+interface Slot {
+  row: number;
+  col: number;
+  horizontal: boolean;
+}
+
+/** Exactly tiles a rows x cols grid with 1xSEGMENTS straight pieces (mixed
+ * horizontal/vertical), via backtracking. Always fills every cell — the
+ * starting heap is a single solid block, no holes. */
+function tileGrid(rows: number, cols: number): Slot[] | null {
+  const grid: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false));
+  const slots: Slot[] = [];
+
+  function firstEmpty(): [number, number] | null {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (!grid[r][c]) return [r, c];
+      }
+    }
+    return null;
+  }
+
+  function setRange(cells: [number, number][], value: boolean) {
+    for (const [r, c] of cells) grid[r][c] = value;
+  }
+
+  function backtrack(): boolean {
+    const empty = firstEmpty();
+    if (!empty) return true;
+    const [r, c] = empty;
+    for (const horizontal of shuffled([true, false])) {
+      const cells: [number, number][] = horizontal
+        ? [
+            [r, c],
+            [r, c + 1],
+            [r, c + 2],
+          ]
+        : [
+            [r, c],
+            [r + 1, c],
+            [r + 2, c],
+          ];
+      const inBounds = horizontal ? c + SEGMENTS <= cols : r + SEGMENTS <= rows;
+      if (!inBounds || cells.some(([rr, cc]) => grid[rr][cc])) continue;
+      setRange(cells, true);
+      slots.push({ row: r, col: c, horizontal });
+      if (backtrack()) return true;
+      slots.pop();
+      setRange(cells, false);
+    }
+    return false;
+  }
+
+  return backtrack() ? slots : null;
+}
+
+function piecesFromSlots(slots: Slot[], rows: number, cols: number): Piece[] {
+  const offsetX = (BOARD_UNITS - cols * CELL) / 2;
+  const offsetY = (BOARD_UNITS - rows * CELL) / 2;
+  return slots.map((slot, id) => {
+    const dir: Dir = slot.horizontal
+      ? Math.random() < 0.5
+        ? "left"
+        : "right"
+      : Math.random() < 0.5
+        ? "up"
+        : "down";
+    const x = slot.horizontal ? offsetX + (slot.col + SEGMENTS / 2) * CELL : offsetX + (slot.col + 0.5) * CELL;
+    const y = slot.horizontal ? offsetY + (slot.row + 0.5) * CELL : offsetY + (slot.row + SEGMENTS / 2) * CELL;
+    return { id, x, y, dir, length: PIECE_LENGTH, thickness: PIECE_THICKNESS, layer: id };
   });
+}
+
+/** Deterministic, always-solvable fallback — used only if the randomized
+ * tiling/direction search below is somehow exhausted. Fills every row (or
+ * column) with same-direction pieces: since rows/columns never block each
+ * other, they peel off left-to-right (or top-to-bottom) over a few passes. */
+function stripeFallback(rows: number, cols: number): Piece[] {
+  const slots: Slot[] = [];
+  if (cols % SEGMENTS === 0) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c += SEGMENTS) slots.push({ row: r, col: c, horizontal: true });
+    }
+  } else {
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows; r += SEGMENTS) slots.push({ row: r, col: c, horizontal: false });
+    }
+  }
+  return piecesFromSlots(slots, rows, cols).map((p) => ({
+    ...p,
+    dir: p.dir === "left" || p.dir === "right" ? "right" : "down",
+  }));
 }
 
 export function generateHeap(levelId: string): Piece[] {
   const level = LEVELS.find((l) => l.id === levelId) ?? LEVELS[0];
-  for (let attempt = 0; attempt < 200; attempt++) {
-    const pieces = tryPack(level.count);
-    if (pieces && isSolvable(pieces)) return pieces;
+  for (let tilingAttempt = 0; tilingAttempt < 40; tilingAttempt++) {
+    const slots = tileGrid(level.rows, level.cols);
+    if (!slots) continue;
+    for (let dirAttempt = 0; dirAttempt < 40; dirAttempt++) {
+      const pieces = piecesFromSlots(slots, level.rows, level.cols);
+      if (isSolvable(pieces)) return pieces;
+    }
   }
-  return gridFallback(level.count);
+  return stripeFallback(level.rows, level.cols);
 }

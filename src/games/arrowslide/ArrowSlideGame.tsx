@@ -286,8 +286,8 @@ export function ArrowSlideGame({ onExit }: GameProps) {
                 style={{
                   left: `${leftPct}%`,
                   top: `${topPct}%`,
-                  width: `${((isVertical ? piece.thickness : piece.length) / BOARD_UNITS) * 100}%`,
-                  height: `${((isVertical ? piece.length : piece.thickness) / BOARD_UNITS) * 100}%`,
+                  width: `calc(${((isVertical ? piece.thickness : piece.length) / BOARD_UNITS) * 100}% - 4px)`,
+                  height: `calc(${((isVertical ? piece.length : piece.thickness) / BOARD_UNITS) * 100}% - 4px)`,
                   zIndex: piece.layer,
                   background: color,
                 }}
@@ -322,8 +322,8 @@ export function ArrowSlideGame({ onExit }: GameProps) {
                 style={{
                   left: `${(x / BOARD_UNITS) * 100}%`,
                   top: `${(y / BOARD_UNITS) * 100}%`,
-                  width: `${((isVertical ? ex.piece.thickness : ex.piece.length) / BOARD_UNITS) * 100}%`,
-                  height: `${((isVertical ? ex.piece.length : ex.piece.thickness) / BOARD_UNITS) * 100}%`,
+                  width: `calc(${((isVertical ? ex.piece.thickness : ex.piece.length) / BOARD_UNITS) * 100}% - 4px)`,
+                  height: `calc(${((isVertical ? ex.piece.length : ex.piece.thickness) / BOARD_UNITS) * 100}% - 4px)`,
                   zIndex: 999,
                   background: color,
                   opacity: 1 - t * 0.3,
