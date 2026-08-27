@@ -1,57 +1,23 @@
 import { useState } from "react";
-import { CallProvider } from "./call/CallContext";
+import { CallProvider } from "./call/CallProvider";
+import { AppShell } from "./AppShell";
 import { SetupScreen } from "./setup/SetupScreen";
 import { loadProfile, saveProfile } from "./setup/storage";
-import { TabBar } from "./components/TabBar";
-import type { TabId } from "./components/TabBar";
 import { ExitDoorIcon } from "./components/ExitDoorIcon";
-import { VideoTab } from "./tabs/VideoTab";
-import { GamesTab } from "./tabs/GamesTab";
 import { GAMES } from "./games/registry";
+import { TestModeApp } from "./test/TestModeApp";
 import { useBackGuard } from "./useBackGuard";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import type { FamilyProfile } from "./types";
 import "./App.css";
 
-function AppShell({
-  profile,
-  activeGameId,
-  onSelectGame,
-}: {
-  profile: FamilyProfile;
-  activeGameId: string | null;
-  onSelectGame: (id: string | null) => void;
-}) {
-  const [activeTab, setActiveTab] = useState<TabId>("video");
-  const activeGame = GAMES.find((g) => g.id === activeGameId) ?? null;
-
-  return (
-    <CallProvider roomUrl={profile.roomUrl} name={profile.name}>
-      <div className="app-shell">
-        <main className="app-main">
-          {/* Both panes stay mounted and are only hidden via CSS, not
-              unmounted, so a game in progress (its network listeners,
-              per-race local state, timers, ...) survives switching to the
-              Video tab and back — kids do this constantly. */}
-          <div className={`app-tab-pane ${activeTab === "video" ? "app-tab-pane--active" : ""}`}>
-            <VideoTab />
-          </div>
-          <div className={`app-tab-pane ${activeTab === "games" ? "app-tab-pane--active" : ""}`}>
-            <GamesTab activeGameId={activeGameId} onSelectGame={onSelectGame} />
-          </div>
-        </main>
-        <TabBar
-          active={activeTab}
-          onChange={setActiveTab}
-          activeGame={activeGame ? { icon: activeGame.icon, name: activeGame.name } : null}
-        />
-      </div>
-    </CallProvider>
-  );
-}
-
 function roomFromLink(): string | null {
   return new URLSearchParams(window.location.search).get("room");
+}
+
+/** `?test=1` opens test mode straight away — see src/test/TestModeApp.tsx. */
+function testModeFromLink(): boolean {
+  return new URLSearchParams(window.location.search).has("test");
 }
 
 function inviteLinkFor(roomUrl: string): string {
@@ -61,11 +27,12 @@ function inviteLinkFor(roomUrl: string): string {
 function App() {
   const [profile, setProfile] = useState<FamilyProfile | null>(() => loadProfile());
   const [editing, setEditing] = useState(false);
+  const [testMode, setTestMode] = useState(testModeFromLink);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const activeGame = GAMES.find((g) => g.id === activeGameId) ?? null;
   const { showExitConfirm, confirmExit, cancelExit } = useBackGuard({
-    enabled: !!profile,
+    enabled: !!profile && !testMode,
     activeGameId,
     setActiveGameId,
     editing,
@@ -96,11 +63,24 @@ function App() {
     }
   }
 
+  if (testMode) {
+    return (
+      <TestModeApp
+        seedName={profile?.name}
+        onExit={() => {
+          setTestMode(false);
+          window.history.replaceState({}, "", window.location.pathname);
+        }}
+      />
+    );
+  }
+
   if (!profile || editing) {
     return (
       <SetupScreen
         initial={profile ?? { roomUrl: roomFromLink() ?? undefined }}
         onCancel={profile ? () => setEditing(false) : undefined}
+        onTestMode={() => setTestMode(true)}
         onComplete={(p) => {
           saveProfile(p);
           setProfile(p);
@@ -115,12 +95,13 @@ function App() {
 
   return (
     <div className="app-root">
-      <AppShell
+      <CallProvider
         key={`${profile.roomUrl}:${profile.name}`}
-        profile={profile}
-        activeGameId={activeGameId}
-        onSelectGame={setActiveGameId}
-      />
+        roomUrl={profile.roomUrl}
+        name={profile.name}
+      >
+        <AppShell activeGameId={activeGameId} onSelectGame={setActiveGameId} />
+      </CallProvider>
       <button
         className="settings-corner-button invite-corner-button"
         onClick={handleInvite}
