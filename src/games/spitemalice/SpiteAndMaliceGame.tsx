@@ -5,6 +5,7 @@ import { colorForPlayerIndex } from "../playerColors";
 import { PlayingCard } from "../PlayingCard";
 import type { Card } from "../deck";
 import {
+  applyEndTurn,
   applyPlayToCentre,
   applyPlayToSide,
   canPlayToCentreStack,
@@ -138,6 +139,10 @@ export function SpiteAndMaliceGame({ onExit }: GameProps) {
       if (type === "play-side") {
         const { source, sideIdx } = payload as SidePayload;
         commit(applyPlayToSide(engineRef.current, senderId, source, sideIdx));
+        return;
+      }
+      if (type === "end-turn") {
+        commit(applyEndTurn(engineRef.current, senderId));
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -175,11 +180,23 @@ export function SpiteAndMaliceGame({ onExit }: GameProps) {
 
   function playToSide(sideIdx: number) {
     if (!state || !myTurn || !selectedSource) return;
-    if (selectedSource.type === "side") return; // side-to-side isn't legal
+    // Only a hand card can be discarded — the pay-off card has to go to a
+    // centre stack, and side-to-side isn't a move.
+    if (selectedSource.type !== "hand") return;
     if (isHost && engineRef.current) {
       commit(applyPlayToSide(engineRef.current, localSessionId ?? "", selectedSource, sideIdx));
     } else {
       send("play-side", { source: selectedSource, sideIdx });
+    }
+    setSelectedSource(null);
+  }
+
+  function endTurn() {
+    if (!state || !myTurn) return;
+    if (isHost && engineRef.current) {
+      commit(applyEndTurn(engineRef.current, localSessionId ?? ""));
+    } else {
+      send("end-turn", {});
     }
     setSelectedSource(null);
   }
@@ -223,7 +240,11 @@ export function SpiteAndMaliceGame({ onExit }: GameProps) {
 
   const selectedCard = selectedSource ? sourceCard(selectedSource, myHand, myPayoffTop, mySideStacks) : null;
   const centreHighlights = state.centreStacks.map((stack) => (selectedCard ? canPlayToCentreStack(selectedCard, stack) : false));
-  const sideEnabled = myTurn && !!selectedSource && selectedSource.type !== "side";
+  // A side stack is a discard pile: only a card from your hand can go there.
+  const sideEnabled = myTurn && selectedSource?.type === "hand";
+  // Played your whole hand out with the stock dry — there's nothing left to
+  // discard, so the turn needs another way to end.
+  const mustPassTurn = myTurn && myHand.length === 0 && state.stockCount === 0;
 
   return (
     <div className="sm-game">
@@ -313,6 +334,12 @@ export function SpiteAndMaliceGame({ onExit }: GameProps) {
           </div>
         </div>
       </div>
+
+      {mustPassTurn && (
+        <button className="primary-button sm-end-turn" onClick={endTurn}>
+          Nothing left to discard — end turn
+        </button>
+      )}
 
       <div className="sm-my-hand">
         {myHand.map((card) => (
