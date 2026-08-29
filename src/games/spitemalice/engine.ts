@@ -183,6 +183,36 @@ export function applyPlayToCentre(
   return { ...s, lastEventText: `${playerName(s, playerId)} played ${card.rank}${card.suit}${eventSuffix}` };
 }
 
+/**
+ * Hands control to the other player. Shared by the normal way a turn ends
+ * (discarding from hand) and the rare case where there's nothing left to
+ * discard with — see applyEndTurn.
+ */
+function passTurn(state: EngineState, playerId: string, eventText: string): EngineState {
+  // Hand tops up first (per-turn refill), then it's the stall check — did a
+  // whole trip round the table pass with no centre progress while the stock
+  // is dry? — before handing control across.
+  const nextPlayerId = otherPlayer(state, playerId) ?? playerId;
+  // A "stalled" turn is one that made zero centre-stack progress while the
+  // stock had nothing left to offer; two of those in a row (one full trip
+  // round the table) means nobody can move the game forward any more.
+  const stalledThisTurn = state.centrePlaysThisTurn === 0 && state.stock.length === 0;
+  const stallStreak = stalledThisTurn ? state.stallStreak + 1 : 0;
+
+  if (stallStreak >= STALL_TURNS_FOR_DRAW) {
+    return { ...state, phase: "game-over", winnerId: null, lastEventText: "Stock's out and nobody can move — it's a draw." };
+  }
+
+  const s = refillHand(state, nextPlayerId);
+  return {
+    ...s,
+    currentPlayerId: nextPlayerId,
+    centrePlaysThisTurn: 0,
+    stallStreak,
+    lastEventText: eventText,
+  };
+}
+
 export function applyPlayToSide(
   state: EngineState,
   playerId: string,
@@ -190,43 +220,41 @@ export function applyPlayToSide(
   sideIdx: number
 ): EngineState {
   if (state.phase !== "playing" || state.currentPlayerId !== playerId) return state;
-  if (source.type === "side") return state; // side-to-side isn't a legal move
+  // Only a card from your hand can be discarded. The pay-off card is the one
+  // you're racing to get rid of — letting it go to a side stack would both
+  // skip the centre stacks it has to be played on and (via checkWin) hand
+  // someone the game for dumping their last one. Side-to-side isn't a move
+  // either.
+  if (source.type !== "hand") return state;
   if (sideIdx < 0 || sideIdx >= SIDE_STACK_COUNT) return state;
   const taken = takeFromSource(state, playerId, source);
   if (!taken) return state;
   const { card } = taken;
-  let s = taken.state;
+  const s = taken.state;
 
   const stacks = s.sideStacks[playerId];
   const nextStacks = [...stacks];
   nextStacks[sideIdx] = [...(stacks[sideIdx] ?? []), card];
-  s = { ...s, sideStacks: { ...s.sideStacks, [playerId]: nextStacks } };
 
-  s = checkWin(s, playerId, source);
-  if (s.phase === "game-over") {
-    return { ...s, lastEventText: `${playerName(s, playerId)} played their last payoff card and wins!` };
-  }
+  return passTurn(
+    { ...s, sideStacks: { ...s.sideStacks, [playerId]: nextStacks } },
+    playerId,
+    `${playerName(s, playerId)} discarded ${card.rank}${card.suit} to a side stack.`
+  );
+}
 
-  // Turn over: hand tops up first (per-turn refill), then it's the stall
-  // check — did a whole trip round the table pass with no centre progress
-  // while the stock is dry? — before handing control across.
-  const nextPlayerId = otherPlayer(s, playerId) ?? playerId;
-  // A "stalled" turn is one that made zero centre-stack progress while the
-  // stock had nothing left to offer; two of those in a row (one full trip
-  // round the table) means nobody can move the game forward any more.
-  const stalledThisTurn = s.centrePlaysThisTurn === 0 && s.stock.length === 0;
-  const stallStreak = stalledThisTurn ? s.stallStreak + 1 : 0;
+/**
+ * A turn normally ends by discarding from your hand. If you've played your
+ * whole hand to the centre and the stock is empty there's nothing left to
+ * discard, so the turn has to be able to end without one — otherwise the
+ * game freezes with no legal move for anybody.
+ */
+export function canEndTurnWithoutDiscard(state: EngineState, playerId: string): boolean {
+  if (state.phase !== "playing" || state.currentPlayerId !== playerId) return false;
+  return state.hands[playerId].length === 0 && state.stock.length === 0;
+}
 
-  if (stallStreak >= STALL_TURNS_FOR_DRAW) {
-    return { ...s, phase: "game-over", winnerId: null, lastEventText: "Stock's out and nobody can move — it's a draw." };
-  }
-
-  s = refillHand(s, nextPlayerId);
-  return {
-    ...s,
-    currentPlayerId: nextPlayerId,
-    centrePlaysThisTurn: 0,
-    stallStreak,
-    lastEventText: `${playerName(s, playerId)} discarded ${card.rank}${card.suit} to a side stack.`,
-  };
+export function applyEndTurn(state: EngineState, playerId: string): EngineState {
+  if (!canEndTurnWithoutDiscard(state, playerId)) return state;
+  return passTurn(state, playerId, `${playerName(state, playerId)} had nothing left to discard.`);
 }
