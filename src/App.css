@@ -2466,6 +2466,13 @@
   filter: drop-shadow(0 3px 4px rgba(80, 60, 50, 0.22));
 }
 
+.as-piece-glyph {
+  font-size: 15px;
+  font-weight: 700;
+  fill: #4a3f35;
+  pointer-events: none;
+}
+
 .as-piece--jiggle {
   animation: as-jiggle 0.32s ease;
   transform-box: fill-box;

@@ -15,6 +15,7 @@ const DIR_XY: Record<Dir, { dx: number; dy: number }> = {
   right: { dx: 1, dy: 0 },
 };
 const PALETTE = ["#d9a5a0", "#a8c3a0", "#b7a8d6", "#d9c39a"]; // dusty rose, sage, lavender, warm sand
+const ARROW_GLYPH: Record<Dir, string> = { up: "↑", down: "↓", left: "←", right: "→" };
 
 interface PublicPlayer {
   sessionId: string;
@@ -288,6 +289,15 @@ export function ArrowSlideGame({ onExit }: GameProps) {
                   strokeLinejoin="round"
                 />
                 <polygon points={arrowPoints(piece)} fill={color} />
+                <text
+                  x={piece.cells[piece.cells.length - 1].x}
+                  y={piece.cells[piece.cells.length - 1].y}
+                  className="as-piece-glyph"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                >
+                  {ARROW_GLYPH[piece.dir]}
+                </text>
                 <path
                   d={d}
                   className="as-piece-hit"
@@ -326,6 +336,15 @@ export function ArrowSlideGame({ onExit }: GameProps) {
                   strokeLinejoin="round"
                 />
                 <polygon points={arrowPoints(ex.piece)} fill={color} />
+                <text
+                  x={ex.piece.cells[ex.piece.cells.length - 1].x}
+                  y={ex.piece.cells[ex.piece.cells.length - 1].y}
+                  className="as-piece-glyph"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                >
+                  {ARROW_GLYPH[ex.piece.dir]}
+                </text>
               </g>
             );
           })}
