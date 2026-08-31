@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useHostGameState } from "../useHostGameState";
 import type { GameProps } from "../types";
-import { BOARD_UNITS, LEVELS, canClear, distanceToExit, generateHeap, type Dir, type Piece } from "./heap";
+import { BOARD_UNITS, CELL, LEVELS, canClear, distanceToExit, generateHeap, type Dir, type Piece } from "./heap";
 
 const GAME_ID = "arrow-slide";
 const EXIT_MS_PER_UNIT = 2.3; // tuned for a snappy-but-smooth glide
 const JIGGLE_MS = 320;
+const STROKE_WIDTH = CELL - 7; // leaves a thin seam between adjacent pieces
 
-const ARROW_GLYPH: Record<Dir, string> = { up: "↑", down: "↓", left: "←", right: "→" };
+const DIR_XY: Record<Dir, { dx: number; dy: number }> = {
+  up: { dx: 0, dy: -1 },
+  down: { dx: 0, dy: 1 },
+  left: { dx: -1, dy: 0 },
+  right: { dx: 1, dy: 0 },
+};
 const PALETTE = ["#d9a5a0", "#a8c3a0", "#b7a8d6", "#d9c39a"]; // dusty rose, sage, lavender, warm sand
 
 interface PublicPlayer {
@@ -34,25 +40,31 @@ interface LevelPayload {
 
 type ArrowSlidePayload = PublicState | TapPayload | LevelPayload | Record<string, never>;
 
-interface Tween {
-  fromX: number;
-  fromY: number;
-  toX: number;
-  toY: number;
-  startedAt: number;
-  duration: number;
-}
-
 interface Exiting {
   piece: Piece;
-  fromX: number;
-  fromY: number;
   startedAt: number;
   duration: number;
 }
 
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
+}
+
+function piecePathD(piece: Piece): string {
+  return piece.cells.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`).join(" ");
+}
+
+function arrowPoints(piece: Piece): string {
+  const head = piece.cells[piece.cells.length - 1];
+  const { dx, dy } = DIR_XY[piece.dir];
+  const perpX = -dy;
+  const perpY = dx;
+  const tip = { x: head.x + dx * CELL * 0.55, y: head.y + dy * CELL * 0.55 };
+  const baseCentre = { x: head.x + dx * CELL * 0.1, y: head.y + dy * CELL * 0.1 };
+  const halfWidth = CELL * 0.32;
+  const baseL = { x: baseCentre.x + perpX * halfWidth, y: baseCentre.y + perpY * halfWidth };
+  const baseR = { x: baseCentre.x - perpX * halfWidth, y: baseCentre.y - perpY * halfWidth };
+  return `${tip.x},${tip.y} ${baseL.x},${baseL.y} ${baseR.x},${baseR.y}`;
 }
 
 export function ArrowSlideGame({ onExit }: GameProps) {
@@ -68,12 +80,8 @@ export function ArrowSlideGame({ onExit }: GameProps) {
   } = useHostGameState<PublicState, ArrowSlidePayload>(GAME_ID, "cleared");
 
   const prevPiecesRef = useRef<Piece[]>([]);
-  const displayPosRef = useRef(new Map<number, { x: number; y: number }>());
-  const tweensRef = useRef(new Map<number, Tween>());
   const exitingRef = useRef<Exiting[]>([]);
   const rafRef = useRef<number | null>(null);
-  const piecesRef = useRef<Piece[]>([]);
-  piecesRef.current = state?.pieces ?? [];
   const [, forceTick] = useState(0);
   const [jigglingId, setJiggling] = useState<number | null>(null);
 
@@ -117,8 +125,6 @@ export function ArrowSlideGame({ onExit }: GameProps) {
     const order = presentPlayers.slice(0, 2).map((p) => ({ sessionId: p.sessionId, name: p.userName }));
     if (order.length < 2) return;
     prevPiecesRef.current = [];
-    displayPosRef.current.clear();
-    tweensRef.current.clear();
     exitingRef.current = [];
     startAsHost({
       phase: "level-select",
@@ -138,28 +144,20 @@ export function ArrowSlideGame({ onExit }: GameProps) {
 
   // Diff the authoritative board against what was last rendered: a piece
   // that vanished gets an exit animation gliding off in its own direction;
-  // everything else is seeded directly (no animation) — mirrors the same
-  // approach used by the original grid version's slide animation.
+  // everything else needs no animation since pieces never move except when
+  // clearing.
   useEffect(() => {
     const next = state?.pieces ?? [];
     const prev = prevPiecesRef.current;
-    const nextById = new Map(next.map((p) => [p.id, p]));
+    const nextIds = new Set(next.map((p) => p.id));
 
     for (const p of prev) {
-      if (nextById.has(p.id)) continue;
-      const pos = displayPosRef.current.get(p.id) ?? { x: p.x, y: p.y };
-      const dist = distanceToExit(p);
+      if (nextIds.has(p.id)) continue;
       exitingRef.current.push({
         piece: p,
-        fromX: pos.x,
-        fromY: pos.y,
         startedAt: performance.now(),
-        duration: Math.max(220, dist * EXIT_MS_PER_UNIT),
+        duration: Math.max(220, distanceToExit(p) * EXIT_MS_PER_UNIT),
       });
-      displayPosRef.current.delete(p.id);
-    }
-    for (const p of next) {
-      if (!displayPosRef.current.has(p.id)) displayPosRef.current.set(p.id, { x: p.x, y: p.y });
     }
     prevPiecesRef.current = next;
     ensureAnimating();
@@ -272,68 +270,66 @@ export function ArrowSlideGame({ onExit }: GameProps) {
       <p className="dg-round-hint">{remaining} left in the heap</p>
 
       <div className="as-board-wrap">
-        <div className="as-board" style={{ aspectRatio: "1 / 1" }}>
+        <svg className="as-board" viewBox={`0 0 ${BOARD_UNITS} ${BOARD_UNITS}`} style={{ aspectRatio: "1 / 1" }}>
           {state.pieces.map((piece) => {
-            const pos = displayPosRef.current.get(piece.id) ?? { x: piece.x, y: piece.y };
-            const leftPct = (pos.x / BOARD_UNITS) * 100;
-            const topPct = (pos.y / BOARD_UNITS) * 100;
-            const isVertical = piece.dir === "up" || piece.dir === "down";
             const color = PALETTE[piece.id % PALETTE.length];
+            const d = piecePathD(piece);
             return (
-              <button
+              <g
                 key={piece.id}
-                className={`as-piece ${jigglingId === piece.id ? "as-piece--jiggle" : ""}`}
-                style={{
-                  left: `${leftPct}%`,
-                  top: `${topPct}%`,
-                  width: `calc(${((isVertical ? piece.thickness : piece.length) / BOARD_UNITS) * 100}% - 4px)`,
-                  height: `calc(${((isVertical ? piece.length : piece.thickness) / BOARD_UNITS) * 100}% - 4px)`,
-                  zIndex: piece.layer,
-                  background: color,
-                }}
-                onClick={() => handleTap(piece)}
-                disabled={!myTurn}
-                aria-label={`Arrow piece pointing ${piece.dir}`}
+                className={`as-piece-group ${jigglingId === piece.id ? "as-piece--jiggle" : ""}`}
               >
-                <span className="as-piece__arrow">{ARROW_GLYPH[piece.dir]}</span>
-              </button>
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={STROKE_WIDTH}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <polygon points={arrowPoints(piece)} fill={color} />
+                <path
+                  d={d}
+                  className="as-piece-hit"
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth={CELL}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  onClick={myTurn ? () => handleTap(piece) : undefined}
+                  style={{ cursor: myTurn ? "pointer" : "default" }}
+                  aria-label={`Arrow piece pointing ${piece.dir}`}
+                />
+              </g>
             );
           })}
           {exitingRef.current.map((ex) => {
             const t = Math.min(1, (now - ex.startedAt) / ex.duration);
             const eased = easeOutCubic(t);
             const dist = distanceToExit(ex.piece) * eased;
-            const delta =
-              ex.piece.dir === "right"
-                ? { dx: dist, dy: 0 }
-                : ex.piece.dir === "left"
-                  ? { dx: -dist, dy: 0 }
-                  : ex.piece.dir === "down"
-                    ? { dx: 0, dy: dist }
-                    : { dx: 0, dy: -dist };
-            const x = ex.fromX + delta.dx;
-            const y = ex.fromY + delta.dy;
-            const isVertical = ex.piece.dir === "up" || ex.piece.dir === "down";
+            const { dx, dy } = DIR_XY[ex.piece.dir];
             const color = PALETTE[ex.piece.id % PALETTE.length];
+            const d = piecePathD(ex.piece);
             return (
-              <div
+              <g
                 key={ex.piece.id}
-                className="as-piece as-piece--exiting"
-                style={{
-                  left: `${(x / BOARD_UNITS) * 100}%`,
-                  top: `${(y / BOARD_UNITS) * 100}%`,
-                  width: `calc(${((isVertical ? ex.piece.thickness : ex.piece.length) / BOARD_UNITS) * 100}% - 4px)`,
-                  height: `calc(${((isVertical ? ex.piece.length : ex.piece.thickness) / BOARD_UNITS) * 100}% - 4px)`,
-                  zIndex: 999,
-                  background: color,
-                  opacity: 1 - t * 0.3,
-                }}
+                className="as-piece-group"
+                transform={`translate(${dx * dist}, ${dy * dist})`}
+                opacity={1 - t * 0.3}
               >
-                <span className="as-piece__arrow">{ARROW_GLYPH[ex.piece.dir]}</span>
-              </div>
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={STROKE_WIDTH}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <polygon points={arrowPoints(ex.piece)} fill={color} />
+              </g>
             );
           })}
-        </div>
+        </svg>
       </div>
     </div>
   );

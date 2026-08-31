@@ -2462,55 +2462,31 @@
   overflow: hidden;
 }
 
-.as-piece {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  border: none;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 4px 10px rgba(80, 60, 50, 0.25),
-    0 1px 2px rgba(80, 60, 50, 0.15);
-  cursor: pointer;
-  padding: 0;
-}
-
-.as-piece:disabled {
-  cursor: default;
-}
-
-.as-piece__arrow {
-  font-size: min(4.5vw, 22px);
-  font-weight: 700;
-  color: #4a3f35;
-  pointer-events: none;
-}
-
-.as-piece--exiting {
-  pointer-events: none;
+.as-piece-group {
+  filter: drop-shadow(0 3px 4px rgba(80, 60, 50, 0.22));
 }
 
 .as-piece--jiggle {
   animation: as-jiggle 0.32s ease;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 @keyframes as-jiggle {
   0%,
   100% {
-    transform: translate(-50%, -50%) rotate(0deg);
+    transform: rotate(0deg);
   }
   20% {
-    transform: translate(-50%, -50%) rotate(-6deg);
+    transform: rotate(-6deg);
   }
   40% {
-    transform: translate(-50%, -50%) rotate(5deg);
+    transform: rotate(5deg);
   }
   60% {
-    transform: translate(-50%, -50%) rotate(-4deg);
+    transform: rotate(-4deg);
   }
   80% {
-    transform: translate(-50%, -50%) rotate(3deg);
+    transform: rotate(3deg);
   }
 }
