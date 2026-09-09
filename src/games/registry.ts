@@ -7,7 +7,6 @@ import { CritterCardsGame } from "./crittercards/CritterCardsGame";
 import { BattleshipGame } from "./battleship/BattleshipGame";
 import { MazeRaceGame } from "./mazerace/MazeRaceGame";
 import { FishingGame } from "./fishing/FishingGame";
-import { FaceDoodleGame } from "./facedoodle/FaceDoodleGame";
 import { GoFishGame } from "./gofish/GoFishGame";
 import { SpiteAndMaliceGame } from "./spitemalice/SpiteAndMaliceGame";
 
@@ -82,14 +81,6 @@ export const GAMES: GameDefinition[] = [
     description: "Catch fish in your own pond — most points wins.",
     minPlayers: 2,
     component: FishingGame,
-  },
-  {
-    id: "face-doodle",
-    name: "Face Doodle",
-    icon: "📸",
-    description: "Snap their photo, decorate it with stickers and doodles, then send it back.",
-    minPlayers: 2,
-    component: FaceDoodleGame,
   },
   {
     id: "go-fish",

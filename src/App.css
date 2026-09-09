@@ -740,24 +740,64 @@
   transition: color 0.2s;
 }
 
-.mm-grid {
+/* Takes whatever height is left over and centres the board in it. Also the
+   measuring stick the board sizes itself against, below. */
+.mm-board {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  container-type: size;
+}
+
+/* 20 cards laid out 4 x 5, each roughly 3:4 — so the board as a whole is
+   about 3:5. Fixing that ratio and capping both dimensions lets it shrink
+   to fit a short screen instead of overflowing into a scroll, which used to
+   hide cards (and other people's flips) below the fold. Keep this ratio in
+   step with PAIR_COUNT in MemoryMatchGame.tsx. */
+.mm-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding: 12px;
-  align-content: center;
-  width: 100%;
-  max-width: 420px;
-  margin: 0 auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  /* Fitting a fixed-ratio board inside a box means taking whichever of the
+     two runs out first — width, or height scaled by the ratio. Plain
+     max-width/max-height can't express that (clamping one leaves the other
+     definite and squashes the cards), so measure both off .mm-board and
+     take the smaller. */
+  width: min(100cqw, 60cqh, 420px);
+  aspect-ratio: 3 / 5;
+  margin: auto;
 }
 
 .mm-card {
   background: none;
   border: none;
   padding: 0;
-  aspect-ratio: 3 / 4;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
   perspective: 800px;
+  /* Lets the symbol size itself off the card rather than the viewport, so
+     it stays proportionate however far the board has shrunk. */
+  container-type: size;
+  transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+/* Face-up but not yet matched: the card currently being shown to everyone.
+   Lifted and enlarged so a flip is obvious to the other player even on a
+   small board. */
+.mm-card--peeking {
+  z-index: 3;
+  transform: scale(1.25);
+}
+
+.mm-card--peeking .mm-card-face {
+  box-shadow: rgba(0, 0, 0, 0.28) 0 8px 20px -4px;
 }
 
 .mm-card:disabled {
@@ -796,6 +836,7 @@
   content: "?";
   color: rgba(255, 255, 255, 0.75);
   font-size: 22px;
+  font-size: 34cqmin;
   font-weight: 800;
 }
 
@@ -803,7 +844,9 @@
   background: var(--surface);
   border: 1px solid var(--border);
   transform: rotateY(180deg);
-  font-size: clamp(28px, 9vw, 42px);
+  font-size: clamp(20px, 8vw, 42px);
+  font-size: 55cqmin;
+  line-height: 1;
 }
 
 .mm-card--matched .mm-card-face--front {
@@ -1845,158 +1888,6 @@
   cursor: pointer;
 }
 
-/* Face Doodle */
-
-.fd-turn-banner {
-  flex: 1;
-  text-align: center;
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.face-doodle-game {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  gap: 8px;
-}
-
-.fd-reveal-image {
-  max-width: min(360px, 100%);
-  width: 100%;
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-}
-
-.fd-canvas-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-  padding: 8px 12px;
-  overflow: hidden;
-}
-
-/* Shrink-wraps to the canvas's own box — see the comment in
-   DoodleCanvas.tsx for why stickers need this as their exact frame. */
-.fd-canvas-inner {
-  position: relative;
-  display: inline-flex;
-  max-width: 100%;
-  max-height: 100%;
-}
-
-.fd-canvas {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  display: block;
-  touch-action: none;
-  cursor: crosshair;
-  background: white;
-}
-
-.fd-sticker {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  font-size: 34px;
-  line-height: 1;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
-}
-
-.fd-sticker__remove {
-  position: absolute;
-  top: -8px;
-  right: -10px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: none;
-  background: #ef4444;
-  color: white;
-  font-size: 11px;
-  line-height: 20px;
-  padding: 0;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-}
-
-.fd-toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 4px 12px;
-}
-
-.fd-tool-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.fd-swatch {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  padding: 0;
-  cursor: pointer;
-}
-
-.fd-swatch--active {
-  border-color: var(--text-h);
-  box-shadow: 0 0 0 2px var(--bg);
-}
-
-.fd-size-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  background: var(--accent-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.fd-size-btn span {
-  display: block;
-  border-radius: 50%;
-  background: var(--text-h);
-}
-
-.fd-size-btn--active {
-  border-color: var(--accent-strong);
-}
-
-.fd-sticker-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  border: none;
-  background: var(--accent-bg);
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.fd-done-button {
-  margin: 8px 12px max(12px, env(safe-area-inset-bottom));
-}
-
 /* Exit confirm dialog */
 
 .exit-confirm-overlay {
@@ -2570,10 +2461,15 @@
 }
 
 /* The shell normally fills the viewport; inside a pane it fills the pane
-   instead, so the test bar isn't pushed off-screen. */
+   instead, so the test bar isn't pushed off-screen. The explicit width
+   matters: the shell centres itself with `margin: 0 auto`, which in this
+   flex pane (unlike the plain block it sits in normally) makes it
+   shrink-to-fit its contents — so test mode would render narrower than the
+   real app and misrepresent every layout in it. */
 .test-pane .app-shell {
   min-height: 0;
   flex: 1;
+  width: 100%;
 }
 
 /* Corner buttons are fixed to the viewport in the real app, which would put

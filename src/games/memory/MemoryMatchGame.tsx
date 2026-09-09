@@ -230,32 +230,44 @@ export function MemoryMatchGame({ onExit }: GameProps) {
         </div>
       </div>
 
-      <div className="mm-grid">
-        {state.cards.map((card) => {
-          const faceUp = card.matched || state.flippedIds.includes(card.id);
-          const matchedByIndex = card.matchedBy
-            ? state.players.findIndex((p) => p.sessionId === card.matchedBy)
-            : -1;
-          const style =
-            matchedByIndex >= 0
-              ? ({ "--mm-match-bg": paleGradientForPlayerIndex(matchedByIndex) } as CSSProperties)
-              : undefined;
-          return (
-            <button
-              key={card.id}
-              className={`mm-card ${faceUp ? "mm-card--up" : ""} ${card.matched ? "mm-card--matched" : ""}`}
-              style={style}
-              onClick={() => handleCardClick(card.id)}
-              disabled={!myTurn || faceUp}
-              aria-label={faceUp ? card.symbol : "Face-down card"}
-            >
-              <span className="mm-card-inner">
-                <span className="mm-card-face mm-card-face--back" />
-                <span className="mm-card-face mm-card-face--front">{card.symbol}</span>
-              </span>
-            </button>
-          );
-        })}
+      {/* The board scales to whatever height is left rather than
+          overflowing, so every card stays on screen — otherwise a flip
+          could happen off-screen and the other player would never see it
+          (see .mm-board in App.css). */}
+      <div className="mm-board">
+        <div className="mm-grid">
+          {state.cards.map((card) => {
+            const justFlipped = state.flippedIds.includes(card.id);
+            const faceUp = card.matched || justFlipped;
+            const matchedByIndex = card.matchedBy
+              ? state.players.findIndex((p) => p.sessionId === card.matchedBy)
+              : -1;
+            const style =
+              matchedByIndex >= 0
+                ? ({ "--mm-match-bg": paleGradientForPlayerIndex(matchedByIndex) } as CSSProperties)
+                : undefined;
+            return (
+              <button
+                key={card.id}
+                // A card that's up but not yet matched is the one being
+                // shown to the table right now — it lifts above its
+                // neighbours so it reads at a glance from across the room.
+                className={`mm-card ${faceUp ? "mm-card--up" : ""} ${
+                  card.matched ? "mm-card--matched" : ""
+                } ${justFlipped && !card.matched ? "mm-card--peeking" : ""}`}
+                style={style}
+                onClick={() => handleCardClick(card.id)}
+                disabled={!myTurn || faceUp}
+                aria-label={faceUp ? card.symbol : "Face-down card"}
+              >
+                <span className="mm-card-inner">
+                  <span className="mm-card-face mm-card-face--back" />
+                  <span className="mm-card-face mm-card-face--front">{card.symbol}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="dg-mini-scoreboard">
