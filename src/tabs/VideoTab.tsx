@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useCall } from "../call/CallContext";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { ExitDoorIcon } from "../components/ExitDoorIcon";
 import { VideoTile } from "../components/VideoTile";
 
 export function VideoTab() {
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
   const {
     joinState,
     errorMessage,
@@ -72,12 +75,29 @@ export function VideoTab() {
         </button>
         <button
           className="control-button control-button--leave"
-          onClick={leave}
+          onClick={() => setConfirmingLeave(true)}
           aria-label="Leave the family room"
         >
           <ExitDoorIcon />
         </button>
       </div>
+
+      {/* The leave button sits right next to mic and camera, so a mis-tap
+          would otherwise drop you out of the call with no way back except
+          rejoining. */}
+      {confirmingLeave && (
+        <ConfirmDialog
+          title="Leave the family room?"
+          message="You'll drop out of the call and anything happening in your game will be lost."
+          confirmLabel="Leave"
+          cancelLabel="Stay"
+          onConfirm={() => {
+            setConfirmingLeave(false);
+            leave();
+          }}
+          onCancel={() => setConfirmingLeave(false)}
+        />
+      )}
     </div>
   );
 }
