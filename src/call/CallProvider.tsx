@@ -6,6 +6,7 @@ import Daily, {
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { CallContext } from "./CallContext";
+import { shouldWarnBeforeUnload } from "./unloadGuard";
 import type { CallContextValue, JoinState } from "./CallContext";
 import type { AppMessage, ParticipantTile } from "../types";
 
@@ -127,6 +128,25 @@ export function CallProvider({
       }
     };
   }, [roomUrl, name, attempt]);
+
+  // Closing the tab, refreshing, or a swipe-back gesture on the web would
+  // otherwise drop you out of a live call with no warning. This asks the
+  // browser to confirm first. (The Android back button is handled separately
+  // by useBackGuard; in the installed APK there's no tab to close.)
+  useEffect(() => {
+    if (joinState !== "joined") return;
+    const warn = (ev: BeforeUnloadEvent) => {
+      // An exit already confirmed in-app (the back-button guard) shouldn't
+      // be questioned a second time by the browser.
+      if (!shouldWarnBeforeUnload()) return;
+      ev.preventDefault();
+      // Older browsers (including some Android WebViews) still need this to
+      // show the prompt at all.
+      ev.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [joinState]);
 
   const toggleMic = useCallback(() => {
     const call = callRef.current;

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { allowNextUnload } from "./call/unloadGuard";
 
 /**
  * Traps the browser/Android back button so a stray press never yanks a kid
@@ -61,6 +62,9 @@ export function useBackGuard({
 
   function confirmExit() {
     allowExitRef.current = true;
+    // Already answered this question — don't let the browser ask again on
+    // the way out (see call/unloadGuard.ts).
+    allowNextUnload();
     setShowExitConfirm(false);
     history.back();
   }
