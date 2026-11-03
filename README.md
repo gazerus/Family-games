@@ -27,6 +27,16 @@ sign-up. Games so far:
 - **Fishing Compete** — fish your own pond; whoever picks first sets the
   shared difficulty and catch target (25, 50, 100 fish, or a 60-second
   sprint) for both ponds. Rare gold fish are worth more. 2 players.
+- **Go Fish** — collect sets of four by asking for ranks you hold; handing
+  over a match is on the honour system, so bluffing is allowed. 2 players.
+- **Spite & Malice** — race to clear your pay-off pile by building centre
+  stacks Ace to Queen, Kings wild. 2 players.
+
+If whoever started a game exits it partway through, Connect Four, Memory
+Match and Snakes & Ladders carry on with someone else running it, and the
+person who left can come back in. The other games keep hidden cards or
+timers on the starter's phone, so they go back to the start screen instead.
+Anyone leaving the call ends the game for everyone.
 
 ## How it works, in short
 
@@ -157,8 +167,11 @@ Games are self-contained and register themselves in one place. To add one:
    taps "Start" becomes that session's authority: they compute the single
    source-of-truth state and broadcast it; everyone else just reflects it,
    and sends their moves back for the host to validate and apply. It also
-   handles late joiners and lets a new host take over once a game ends. This
-   is the same pattern all three current games use — see
+   handles late joiners and lets a new host take over once a game ends.
+   If your whole game state is in the public broadcast, pass
+   `{ handOver: (state, newHostId) => state }` as the third argument so the
+   game survives the host exiting mid-game. Nine of the ten games use this
+   pattern — see
    `src/games/memory/MemoryMatchGame.tsx` for the simplest example of it, or
    `src/games/connectfour/ConnectFourGame.tsx` for one with win detection.
    For anything that doesn't fit that shape, drop to the lower-level

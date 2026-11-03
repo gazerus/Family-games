@@ -28,10 +28,21 @@ import type { ParticipantTile } from "../types";
  *    game screen open (a lightweight `here`/`leaving` handshake, separate
  *    from call membership), so games can gate "Start" on that instead of on
  *    `participants`.
+ * 4. If the host leaves this game's screen mid-game (back to the games
+ *    list, or over to Video), nobody is left answering moves. (Someone
+ *    leaving the *call* ends the game for everyone; see GamesTab.) Games whose whole state
+ *    is in the public broadcast pass `handOver`: the remaining player with
+ *    the lowest session id takes over as host from the last state they saw
+ *    (`handOver` gets a chance to tidy it first, e.g. clear a half-finished
+ *    move whose follow-up timer only the old host had). Games that keep
+ *    hidden state on the host (dealt hands, fleets, the secret word) or run
+ *    host-only timers can't be resumed by anyone else, so they drop back to
+ *    the start screen instead of sitting frozen.
  */
 export function useHostGameState<TState extends { phase: string }, TPayload = TState>(
   gameId: string,
-  gameOverPhase: string
+  gameOverPhase: string,
+  options: { handOver?: (state: TState, newHostId: string) => TState } = {}
 ) {
   const { send, onMessage, participants, localName, localSessionId } =
     useGameChannel<TPayload>(gameId);
@@ -39,6 +50,12 @@ export function useHostGameState<TState extends { phase: string }, TPayload = TS
   const [hostId, setHostId] = useState<string | null>(null);
   const [state, setState] = useState<TState | null>(null);
   const [presentIds, setPresentIds] = useState<Set<string>>(new Set());
+  // People who left this game's screen, until they say "here" again. Only used to notice the host going missing.
+  const [goneIds, setGoneIds] = useState<Set<string>>(new Set());
+  const goneRef = useRef<Set<string>>(goneIds);
+  goneRef.current = goneIds;
+  const handOverRef = useRef(options.handOver);
+  handOverRef.current = options.handOver;
   const stateRef = useRef<TState | null>(null);
   const hostIdRef = useRef<string | null>(null);
   const isHostRef = useRef(false);
@@ -55,6 +72,7 @@ export function useHostGameState<TState extends { phase: string }, TPayload = TS
         return;
       }
       if (type === "here" || type === "here-ack") {
+        setGoneIds((prev) => without(prev, senderId));
         setPresentIds((prev) => (prev.has(senderId) ? prev : new Set(prev).add(senderId)));
         // Answer the newcomer so they learn I'm here too, without a full
         // roster protocol. The answer is deliberately a *different* type:
@@ -64,6 +82,7 @@ export function useHostGameState<TState extends { phase: string }, TPayload = TS
         return;
       }
       if (type === "leaving") {
+        setGoneIds((prev) => (prev.has(senderId) ? prev : new Set(prev).add(senderId)));
         setPresentIds((prev) => {
           if (!prev.has(senderId)) return prev;
           const next = new Set(prev);
@@ -73,6 +92,9 @@ export function useHostGameState<TState extends { phase: string }, TPayload = TS
         return;
       }
       if (type !== "state") return;
+      // A stray broadcast from someone who has since left (e.g. a timer that
+      // outlived their screen) mustn't overwrite the game a successor is running.
+      if (goneRef.current.has(senderId)) return;
       const currentHost = hostIdRef.current;
       const currentState = stateRef.current;
       const canAdopt =
@@ -80,6 +102,7 @@ export function useHostGameState<TState extends { phase: string }, TPayload = TS
         senderId === currentHost ||
         currentState === null ||
         currentState.phase === gameOverPhase ||
+        goneRef.current.has(currentHost) ||
         senderId < currentHost;
       if (!canAdopt) return;
       setHostId(senderId);
@@ -130,6 +153,35 @@ export function useHostGameState<TState extends { phase: string }, TPayload = TS
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participantCount]);
 
+  const hostGone =
+    hostId !== null &&
+    hostId !== localSessionId &&
+    goneIds.has(hostId) &&
+    state !== null &&
+    state.phase !== gameOverPhase;
+
+  useEffect(() => {
+    if (!hostGone || !localSessionId || !stateRef.current) return;
+    const handOver = handOverRef.current;
+    if (!handOver) {
+      setHostId(null);
+      setState(null);
+      return;
+    }
+    const inCall = new Set(participants.map((p) => p.sessionId));
+    const candidates = [...presentIds, localSessionId].filter(
+      (id) => inCall.has(id) && !goneIds.has(id)
+    );
+    const successor = candidates.sort()[0];
+    // Someone else is next in line; their broadcast will be adopted (see
+    // canAdopt) as soon as it arrives.
+    if (successor !== localSessionId) return;
+    const next = handOver(stateRef.current, localSessionId);
+    setHostId(localSessionId);
+    setState(next);
+    send("state", next as unknown as TPayload);
+  }, [hostGone, localSessionId, participants, presentIds, goneIds, send]);
+
   const presentPlayers: ParticipantTile[] = participants.filter((p) => presentIds.has(p.sessionId));
 
   return {
@@ -144,4 +196,11 @@ export function useHostGameState<TState extends { phase: string }, TPayload = TS
     localName,
     localSessionId,
   };
+}
+
+function without(set: Set<string>, id: string): Set<string> {
+  if (!set.has(id)) return set;
+  const next = new Set(set);
+  next.delete(id);
+  return next;
 }
