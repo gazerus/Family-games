@@ -9,6 +9,8 @@ import { MazeRaceGame } from "./mazerace/MazeRaceGame";
 import { FishingGame } from "./fishing/FishingGame";
 import { GoFishGame } from "./gofish/GoFishGame";
 import { SpiteAndMaliceGame } from "./spitemalice/SpiteAndMaliceGame";
+import { LudoGame } from "./ludo/LudoGame";
+import { CheeseChaseGame } from "./cheesechase/CheeseChaseGame";
 
 /**
  * Add a new game by dropping its component here — no other wiring needed.
@@ -49,6 +51,22 @@ export const GAMES: GameDefinition[] = [
     description: "Roll the dice, race to square 100 — watch out for snakes!",
     minPlayers: 2,
     component: SnakesLaddersGame,
+  },
+  {
+    id: "ludo",
+    name: "Ludo",
+    icon: "🎲",
+    description: "Roll a 6 to get out, race your four pieces home, and bump others back.",
+    minPlayers: 2,
+    component: LudoGame,
+  },
+  {
+    id: "cheese-chase",
+    name: "Cheese Chase",
+    icon: "🧀",
+    description: "Mice race for cheese — dodge the mousetraps and the prowling cat!",
+    minPlayers: 2,
+    component: CheeseChaseGame,
   },
   {
     id: "critter-cards",

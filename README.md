@@ -14,6 +14,14 @@ sign-up. Games so far:
 - **Connect Four** — the classic, drop discs to line up four in a row.
 - **Snakes & Ladders** — roll an animated dice, race to square 100, 10
   ladders and 10 snakes to keep it swingy. Supports 2-4 players.
+- **Ludo** — roll a 6 to bring a piece out, race all four pieces round and
+  up your home column. Land on someone to send them back to their yard;
+  stars and start squares are safe. A 6, a capture, or getting a piece home
+  earns another roll. Supports 2-4 players.
+- **Cheese Chase** — mice scurry round the kitchen grabbing cheese. Roll,
+  then choose forward or back; mousetraps and running into the cat cost a
+  cheese and send you home, and the cat prowls 1-3 squares after every
+  turn. First to 5 cheese wins. Supports 2-4 players.
 - **Critter Cards** — a simple animal-themed color/number matching card
   game in the same spirit as UNO Junior: Skip, Reverse, Draw 2, and Wild
   cards, first to empty their hand wins, no cross-game scoring. Supports
