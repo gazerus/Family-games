@@ -27,6 +27,9 @@ jobs:
           java-version: "21"
 
       - uses: android-actions/setup-android@v3
+        with:
+          # The default also installs the retired "tools" package, which now fails.
+          packages: platform-tools
 
       - name: Install Android SDK packages
         run: |
