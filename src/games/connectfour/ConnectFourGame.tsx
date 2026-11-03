@@ -70,7 +70,9 @@ export function ConnectFourGame({ onExit }: GameProps) {
     onMessage,
     localSessionId,
     presentPlayers,
-  } = useHostGameState<PublicState, ConnectFourPayload>(GAME_ID, "game-over");
+  } = useHostGameState<PublicState, ConnectFourPayload>(GAME_ID, "game-over", {
+    handOver: (s, id) => ({ ...s, hostId: id }),
+  });
 
   const [revealWinner, setRevealWinner] = useState(false);
 

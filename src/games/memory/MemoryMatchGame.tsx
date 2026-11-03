@@ -48,7 +48,11 @@ export function MemoryMatchGame({ onExit }: GameProps) {
     onMessage,
     localSessionId,
     presentPlayers,
-  } = useHostGameState<PublicState, MemoryPayload>(GAME_ID, "game-over");
+  } = useHostGameState<PublicState, MemoryPayload>(GAME_ID, "game-over", {
+    // A pair turned over just as the old host left would never resolve (that
+    // timer was theirs), so turn it back face down.
+    handOver: (s, id) => ({ ...s, hostId: id, flippedIds: s.flippedIds.length >= 2 ? [] : s.flippedIds }),
+  });
 
   const resolveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [revealWinner, setRevealWinner] = useState(false);

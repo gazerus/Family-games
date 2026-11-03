@@ -59,7 +59,9 @@ export function SnakesLaddersGame({ onExit }: GameProps) {
     onMessage,
     localSessionId,
     presentPlayers,
-  } = useHostGameState<PublicState, SnakesLaddersPayload>(GAME_ID, "game-over");
+  } = useHostGameState<PublicState, SnakesLaddersPayload>(GAME_ID, "game-over", {
+    handOver: (s, id) => ({ ...s, hostId: id }),
+  });
 
   const [animPositions, setAnimPositions] = useState<Record<string, number>>({});
   const [dieFace, setDieFace] = useState(1);

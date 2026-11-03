@@ -1,0 +1,94 @@
+name: Release to Google Play (internal testing)
+
+# Every push to main builds a signed app bundle and, once the Play secrets
+# are set, sends it to the internal testing track so testers update through
+# the Play Store. Without the secrets it still builds and attaches the .aab
+# to the run (needed for the very first, manual upload in Play Console).
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "README.md"
+      - ".github/workflows/deploy.yml"
+      - ".github/workflows/build-apk.yml"
+  workflow_dispatch:
+    inputs:
+      status:
+        description: "Release status: completed (testers get it) or draft (upload only)"
+        default: completed
+        type: choice
+        options: [completed, draft]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      HAS_PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+    steps:
+      - name: Check signing key is set up
+        if: env.HAS_KEYSTORE != 'true'
+        run: |
+          echo "::warning::ANDROID_KEYSTORE_BASE64 secret not set — skipping Play release. See README 'Google Play'."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_KEYSTORE == 'true'
+
+      - uses: actions/setup-node@v4
+        if: env.HAS_KEYSTORE == 'true'
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        if: env.HAS_KEYSTORE == 'true'
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+        if: env.HAS_KEYSTORE == 'true'
+
+      - name: Install Android SDK packages
+        if: env.HAS_KEYSTORE == 'true'
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-36"
+
+      - name: Build web app and sync
+        if: env.HAS_KEYSTORE == 'true'
+        run: |
+          npm ci
+          npm run build:apk
+          npx cap sync android
+
+      - name: Build signed app bundle
+        if: env.HAS_KEYSTORE == 'true'
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # run_number only goes up, so each upload has a higher version code.
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: 1.0.${{ github.run_number }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/upload.jks"
+          ./gradlew bundleRelease --no-daemon
+          rm -f "$RUNNER_TEMP/upload.jks"
+
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_KEYSTORE == 'true'
+        with:
+          name: family-games-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+
+      - name: Upload to Play internal testing
+        if: env.HAS_KEYSTORE == 'true' && env.HAS_PLAY == 'true'
+        uses: r0adkll/upload-google-play@v1.1.3
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: io.github.gazerus.familygames
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: ${{ github.event.inputs.status || 'completed' }}

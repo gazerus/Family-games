@@ -27,6 +27,16 @@ sign-up. Games so far:
 - **Fishing Compete** — fish your own pond; whoever picks first sets the
   shared difficulty and catch target (25, 50, 100 fish, or a 60-second
   sprint) for both ponds. Rare gold fish are worth more. 2 players.
+- **Go Fish** — collect sets of four by asking for ranks you hold; handing
+  over a match is on the honour system, so bluffing is allowed. 2 players.
+- **Spite & Malice** — race to clear your pay-off pile by building centre
+  stacks Ace to Queen, Kings wild. 2 players.
+
+If whoever started a game exits it partway through, Connect Four, Memory
+Match and Snakes & Ladders carry on with someone else running it, and the
+person who left can come back in. The other games keep hidden cards or
+timers on the starter's phone, so they go back to the start screen instead.
+Anyone leaving the call ends the game for everyone.
 
 ## How it works, in short
 
@@ -147,6 +157,20 @@ updates itself the instant it's redeployed; the APK only updates when
 someone downloads a fresh copy and reinstalls over the old one. Fine for
 occasional updates, just not instant.
 
+## Google Play (internal testing)
+
+`.github/workflows/play-release.yml` builds a signed app bundle on every push
+to `main` and sends it to the Play **internal testing** track, so testers
+update through the Play Store. Version code = the workflow's run number.
+
+It needs four repository secrets for signing (`ANDROID_KEYSTORE_BASE64`,
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) and
+`PLAY_SERVICE_ACCOUNT_JSON` for uploading. Without the signing secrets it
+skips; without the Play secret it builds and attaches the `.aab` to the run
+but doesn't upload. Google requires the very first bundle to be uploaded by
+hand in Play Console; after that it's automatic. Keep the upload keystore
+somewhere safe — if it's lost, request an upload key reset in Play Console.
+
 ## Adding a new game
 
 Games are self-contained and register themselves in one place. To add one:
@@ -157,8 +181,11 @@ Games are self-contained and register themselves in one place. To add one:
    taps "Start" becomes that session's authority: they compute the single
    source-of-truth state and broadcast it; everyone else just reflects it,
    and sends their moves back for the host to validate and apply. It also
-   handles late joiners and lets a new host take over once a game ends. This
-   is the same pattern all three current games use — see
+   handles late joiners and lets a new host take over once a game ends.
+   If your whole game state is in the public broadcast, pass
+   `{ handOver: (state, newHostId) => state }` as the third argument so the
+   game survives the host exiting mid-game. Nine of the ten games use this
+   pattern — see
    `src/games/memory/MemoryMatchGame.tsx` for the simplest example of it, or
    `src/games/connectfour/ConnectFourGame.tsx` for one with win detection.
    For anything that doesn't fit that shape, drop to the lower-level
