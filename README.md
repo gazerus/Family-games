@@ -157,6 +157,20 @@ updates itself the instant it's redeployed; the APK only updates when
 someone downloads a fresh copy and reinstalls over the old one. Fine for
 occasional updates, just not instant.
 
+## Google Play (internal testing)
+
+`.github/workflows/play-release.yml` builds a signed app bundle on every push
+to `main` and sends it to the Play **internal testing** track, so testers
+update through the Play Store. Version code = the workflow's run number.
+
+It needs four repository secrets for signing (`ANDROID_KEYSTORE_BASE64`,
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) and
+`PLAY_SERVICE_ACCOUNT_JSON` for uploading. Without the signing secrets it
+skips; without the Play secret it builds and attaches the `.aab` to the run
+but doesn't upload. Google requires the very first bundle to be uploaded by
+hand in Play Console; after that it's automatic. Keep the upload keystore
+somewhere safe — if it's lost, request an upload key reset in Play Console.
+
 ## Adding a new game
 
 Games are self-contained and register themselves in one place. To add one:
