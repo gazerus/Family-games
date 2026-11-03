@@ -47,6 +47,9 @@ jobs:
 
       - uses: android-actions/setup-android@v3
         if: env.HAS_KEYSTORE == 'true'
+        with:
+          # The default also installs the retired "tools" package, which now fails.
+          packages: platform-tools
 
       - name: Install Android SDK packages
         if: env.HAS_KEYSTORE == 'true'
